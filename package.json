@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "export": "next build",
-    "deploy": "touch out/.nojekyll && gh-pages -d out --dotfiles"
+    "predeploy": "npm run build && cp public/404.html out/ && cp public/index-redirect.html out/404.html && touch out/.nojekyll",
+    "deploy": "gh-pages -d out --dotfiles"
   },
   "dependencies": {
     "axios": "^1.9.0",

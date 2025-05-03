@@ -9,7 +9,9 @@ module.exports = {
   // For GitHub Pages deployment
   output: 'export',
   // Update basePath if your repo name is not 'finance'
-  // basePath: '/finance',
+  basePath: '/finance',
+  assetPrefix: '/finance/',
+  trailingSlash: true,
   images: {
     unoptimized: true,
   },

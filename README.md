@@ -42,4 +42,4 @@ npm run deploy
 
 ## Live Demo
 
-Visit the live app: [Finance App](https://yourusername.github.io/finance/)
+Visit the live app: [Finance App](https://09sachin.github.io/finance/)

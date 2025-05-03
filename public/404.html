@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Redirecting...</title>
+  <script>
+    // Single Page App for GitHub Pages
+    // This script takes care of redirecting to the correct path
+    (function() {
+      // Get the current path (everything after /finance/)
+      var path = window.location.pathname;
+      var basePath = '/finance';
+      
+      // If we're at /finance/, just redirect to the index
+      if (path === basePath || path === basePath + '/') {
+        window.location.href = basePath + '/index.html';
+        return;
+      }
+      
+      // Strip the base path
+      if (path.indexOf(basePath) === 0) {
+        path = path.substr(basePath.length);
+      }
+      
+      // If the path doesn't end with .html, add it
+      if (path && !path.endsWith('.html') && !path.includes('.')) {
+        if (path.endsWith('/')) {
+          path = path.slice(0, -1);
+        }
+        window.location.href = basePath + path + '.html';
+      } else {
+        // Otherwise just redirect to the home page
+        window.location.href = basePath + '/index.html';
+      }
+    })();
+  </script>
+</head>
+<body>
+  <p>Redirecting...</p>
+</body>
+</html> 
