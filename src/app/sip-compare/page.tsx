@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, differenceInMonths, parseISO, isValid, addMonths } from 'date-fns';
 import { Line } from 'react-chartjs-2';
@@ -75,7 +75,34 @@ interface SIPResult {
   }[];
 }
 
+// Loading component for Suspense fallback
+function SipCompareLoading() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-6 px-4 sm:py-8">
+      <div className="container mx-auto">
+        <Navigation />
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-pulse flex flex-col items-center">
+            <div className="h-12 w-48 bg-slate-200 dark:bg-slate-700 rounded mb-4"></div>
+            <div className="h-4 w-64 bg-slate-200 dark:bg-slate-700 rounded"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main component wrapper that doesn't use searchParams
 export default function SipComparePage() {
+  return (
+    <Suspense fallback={<SipCompareLoading />}>
+      <SipCompareContent />
+    </Suspense>
+  );
+}
+
+// Content component that uses searchParams
+function SipCompareContent() {
   const [selectedFunds, setSelectedFunds] = useState<SelectedFund[]>([]);
   const [amount, setAmount] = useState<number>(5000);
   const [startDate, setStartDate] = useState<string>('');
