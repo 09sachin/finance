@@ -19,6 +19,9 @@ import {
   Legend,
   Filler
 } from 'chart.js';
+import FavoritesFunds from '../components/FavoritesFunds';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 
 // Register ChartJS components
 ChartJS.register(
@@ -74,6 +77,11 @@ interface CashFlow {
   date: Date;
 }
 
+interface FundItem {
+  schemeCode: number;
+  schemeName: string;
+}
+
 const SIPCalculator: React.FC = () => {
   const [amount, setAmount] = useState<number>(0);
   const [years, setYears] = useState<number>(5);
@@ -95,6 +103,12 @@ const SIPCalculator: React.FC = () => {
   const [investmentMode, setInvestmentMode] = useState<'expected' | 'historical'>('expected');
   const [calculationError, setCalculationError] = useState<string | null>(null);
   const [showBreakdown, setShowBreakdown] = useState<boolean>(false);
+
+  // Get search params at the component level
+  const searchParams = useSearchParams();
+  
+  // Get favorites at the component level
+  const [favoriteFunds] = useLocalStorage<FundItem[]>('favoriteFunds', []);
 
   // Handle fund selection
   const handleFundSelect = (schemeCode: number, schemeName: string) => {
@@ -763,6 +777,37 @@ const SIPCalculator: React.FC = () => {
     }
   };
 
+  // Inside the component, update the useEffect
+  useEffect(() => {
+    // Check if there's a fund parameter in the URL
+    const fundCode = searchParams.get('fund');
+    
+    if (fundCode && !selectedFund) {
+      // Convert to number
+      const schemeCode = parseInt(fundCode, 10);
+      
+      // Find the fund in favorites if available
+      const fund = favoriteFunds.find(f => f.schemeCode === schemeCode);
+      
+      if (fund) {
+        // Automatically select the fund
+        handleFundSelect(fund.schemeCode, fund.schemeName);
+      } else {
+        // If not in favorites, fetch the fund info
+        axios.get(`https://api.mfapi.in/mf/${schemeCode}`)
+          .then(response => {
+            if (response.data && response.data.meta) {
+              handleFundSelect(
+                response.data.meta.scheme_code,
+                response.data.meta.scheme_name
+              );
+            }
+          })
+          .catch(err => console.error('Error fetching fund details:', err));
+      }
+    }
+  }, [selectedFund, favoriteFunds, searchParams, handleFundSelect]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-6 px-4 sm:py-8">
       <div className="container mx-auto">
@@ -864,6 +909,14 @@ const SIPCalculator: React.FC = () => {
                   )}
                 </AnimatePresence>
               </div>
+              
+              {/* Add Favorites section here, but only show when investment mode is historical */}
+              {investmentMode === 'historical' && !selectedFund && (
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">Or Select from Favorites</h3>
+                  <FavoritesFunds onSelectFund={handleFundSelect} />
+                </div>
+              )}
               
               {/* Date Selection Section */}
               <div className="mb-4">

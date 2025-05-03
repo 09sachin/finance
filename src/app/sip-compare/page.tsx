@@ -6,6 +6,7 @@ import { format, differenceInMonths, parseISO, isValid, addMonths } from 'date-f
 import { Line } from 'react-chartjs-2';
 import Navigation from '../components/Navigation';
 import FundSearch from '../components/FundSearch';
+import FavoritesFunds from '../components/FavoritesFunds';
 import axios from 'axios';
 import {
   Chart as ChartJS,
@@ -18,6 +19,8 @@ import {
   Legend,
   Filler
 } from 'chart.js';
+import { useSearchParams } from 'next/navigation';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 
 // Register ChartJS components
 ChartJS.register(
@@ -83,6 +86,12 @@ export default function SipComparePage() {
   const [results, setResults] = useState<SIPResult[]>([]);
   const [showResults, setShowResults] = useState<boolean>(false);
   
+  // Get search params at the component level
+  const searchParams = useSearchParams();
+  
+  // Get favorites at the component level
+  const [favoriteFunds] = useLocalStorage<{schemeCode: number, schemeName: string}[]>('favoriteFunds', []);
+  
   // Colors for different funds in the charts
   const colors = [
     'rgba(59, 130, 246, 1)', // Blue
@@ -132,6 +141,7 @@ export default function SipComparePage() {
   const handleFundSelect = (schemeCode: number, schemeName: string) => {
     // Check if fund is already selected
     if (selectedFunds.some(fund => fund.schemeCode === schemeCode)) {
+      // Fund is already in the list, don't add it again
       return;
     }
     
@@ -572,6 +582,37 @@ export default function SipComparePage() {
     }
   };
   
+  // Inside the component, update the useEffect
+  useEffect(() => {
+    // Check if there's a fund parameter in the URL
+    const fundCode = searchParams.get('fund');
+    
+    if (fundCode && selectedFunds.length === 0) {
+      // Convert to number
+      const schemeCode = parseInt(fundCode, 10);
+      
+      // Find the fund in favorites if available
+      const fund = favoriteFunds.find((f) => f.schemeCode === schemeCode);
+      
+      if (fund) {
+        // Automatically select the fund
+        handleFundSelect(fund.schemeCode, fund.schemeName);
+      } else {
+        // If not in favorites, fetch the fund info
+        axios.get(`https://api.mfapi.in/mf/${schemeCode}`)
+          .then(response => {
+            if (response.data && response.data.meta) {
+              handleFundSelect(
+                response.data.meta.scheme_code,
+                response.data.meta.scheme_name
+              );
+            }
+          })
+          .catch(err => console.error('Error fetching fund details:', err));
+      }
+    }
+  }, [selectedFunds.length, handleFundSelect, searchParams, favoriteFunds]);
+  
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-6 px-4 sm:py-8">
       <div className="container mx-auto">
@@ -627,7 +668,7 @@ export default function SipComparePage() {
                         <div className="flex flex-wrap gap-2">
                           {selectedFunds.map((fund, i) => (
                             <div 
-                              key={fund.schemeCode}
+                              key={`${fund.schemeCode}-${i}`}
                               className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700 rounded-full px-3 py-1.5"
                               style={{ borderLeft: `4px solid ${colors[i % colors.length]}` }}
                             >
@@ -654,6 +695,9 @@ export default function SipComparePage() {
               )}
             </AnimatePresence>
           </div>
+          
+          {/* Favorites section */}
+          <FavoritesFunds onSelectFund={handleFundSelect} />
           
           {/* SIP Parameters */}
           {selectedFunds.length > 0 && (

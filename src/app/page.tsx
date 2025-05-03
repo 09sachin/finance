@@ -6,6 +6,7 @@ import FundSearch from './components/FundSearch';
 import PeriodSelector from './components/PeriodSelector';
 import DateRangeSelector from './components/DateRangeSelector';
 import Navigation from './components/Navigation';
+import FavoritesFunds from './components/FavoritesFunds';
 
 type Period = '1m' | '3m' | '6m' | '1y' | '3y' | '5y' | 'all';
 
@@ -83,6 +84,9 @@ export default function Home() {
           {/* Left sidebar with fund search */}
           <div className="lg:col-span-1 space-y-5">
             <FundSearch onSelectFund={handleFundSelect} />
+            
+            {/* Add Favorites section */}
+            <FavoritesFunds onSelectFund={handleFundSelect} />
             
             {selectedSchemeCode && (
               <div className="space-y-5">
