@@ -1,5 +1,12 @@
+const withPWA = require('next-pwa')({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development'
+});
+
 /** @type {import('next').NextConfig} */
-module.exports = {
+const nextConfig = {
   reactStrictMode: true,
   eslint: {
     // Warning: This allows production builds to successfully complete even if
@@ -16,3 +23,5 @@ module.exports = {
     unoptimized: true,
   },
 };
+
+module.exports = withPWA(nextConfig);
