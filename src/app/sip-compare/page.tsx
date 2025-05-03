@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format, differenceInMonths } from 'date-fns';
+import { format, differenceInMonths, parseISO, isValid, addMonths } from 'date-fns';
 import { Line } from 'react-chartjs-2';
 import Navigation from '../components/Navigation';
 import FundSearch from '../components/FundSearch';
+import axios from 'axios';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -38,6 +39,20 @@ interface SelectedFund {
 interface FundData {
   date: string;
   nav: number;
+}
+
+interface ApiResponse {
+  meta: {
+    fund_house: string;
+    scheme_type: string;
+    scheme_category: string;
+    scheme_code: number;
+    scheme_name: string;
+  };
+  data: {
+    date: string;
+    nav: string;
+  }[];
 }
 
 interface SIPResult {
@@ -80,6 +95,39 @@ export default function SipComparePage() {
   // Maximum number of funds to compare
   const MAX_FUNDS = 5;
   
+  // Safely parse a date string to handle different formats
+  const safeParseDate = (dateString: string): Date => {
+    try {
+      // Try to parse ISO format
+      let date = parseISO(dateString);
+      
+      // Check if valid
+      if (!isValid(date)) {
+        // Try to parse DD-MM-YYYY format
+        const parts = dateString.split('-');
+        if (parts.length === 3) {
+          // Handle DD-MM-YYYY format
+          date = new Date(
+            parseInt(parts[2]), // year
+            parseInt(parts[1]) - 1, // month (0-based)
+            parseInt(parts[0]) // day
+          );
+        }
+      }
+      
+      // If still invalid, use current date as fallback
+      if (!isValid(date)) {
+        console.error(`Invalid date: ${dateString}, using current date as fallback`);
+        return new Date();
+      }
+      
+      return date;
+    } catch (e) {
+      console.error("Date parsing error:", e);
+      return new Date(); // Fallback to current date
+    }
+  };
+  
   // Handle fund selection
   const handleFundSelect = (schemeCode: number, schemeName: string) => {
     // Check if fund is already selected
@@ -113,37 +161,227 @@ export default function SipComparePage() {
     setShowResults(false);
   };
   
-  // Generate sample timeline data for visualization
-  const generateTimelineData = (totalMonths: number, expectedReturn: number, initialValue: number = 0) => {
-    const timeline = [];
-    
-    let currentValue = initialValue;
-    
-    for (let i = 0; i <= totalMonths; i++) {
-      // Calculate monthly return rate (annualized return converted to monthly)
-      const monthlyRate = Math.pow(1 + expectedReturn / 100, 1 / 12) - 1;
+  // Fetch fund data from API
+  const fetchFundData = async (schemeCode: number): Promise<FundData[]> => {
+    try {
+      const response = await axios.get<ApiResponse>(`https://api.mfapi.in/mf/${schemeCode}`);
       
-      if (i === 0 && initialLumpsum > 0) {
-        currentValue = initialLumpsum;
-      } else {
-        // Add monthly SIP amount and apply the monthly return
-        currentValue = (currentValue + amount) * (1 + monthlyRate);
-      }
+      // Sort data by date (oldest first)
+      const sortedData = [...response.data.data].sort((a, b) => 
+        safeParseDate(a.date).getTime() - safeParseDate(b.date).getTime()
+      );
       
-      const date = new Date();
-      date.setMonth(date.getMonth() - totalMonths + i);
+      // Apply date range filter
+      const startDateObj = startDate ? safeParseDate(startDate) : null;
+      const endDateObj = endDate ? safeParseDate(endDate) : new Date();
+      
+      // Filter data within the date range
+      const filteredData = sortedData.filter(item => {
+        const itemDate = safeParseDate(item.date);
+        if (startDateObj && itemDate < startDateObj) return false;
+        if (endDateObj && itemDate > endDateObj) return false;
+        return true;
+      });
+      
+      // Convert API data to our format
+      return filteredData.map(item => ({
+        date: item.date,
+        nav: parseFloat(item.nav)
+      }));
+    } catch (error) {
+      console.error(`Error fetching data for fund ${schemeCode}:`, error);
+      return [];
+    }
+  };
+  
+  // Calculate SIP investment value based on real data
+  const calculateSIPValue = (
+    fundData: FundData[], 
+    sipAmount: number,
+    initialInvestment: number
+  ): { timeline: { date: string; value: number }[], totalValue: number, finalUnits: number, endNav: number } => {
+    if (!fundData.length) {
+      return { timeline: [], totalValue: 0, finalUnits: 0, endNav: 0 };
+    }
+    
+    // Sort data chronologically to ensure correct order
+    const sortedData = [...fundData].sort((a, b) => 
+      safeParseDate(a.date).getTime() - safeParseDate(b.date).getTime()
+    );
+    
+    let totalUnits = 0;
+    let timeline: { date: string; value: number }[] = [];
+    
+    // Function to find the nearest NAV date
+    const findNearestNAV = (targetDate: Date): { nav: number, date: string } => {
+      // Convert target date to start of day for comparison
+      const targetTime = new Date(
+        targetDate.getFullYear(), 
+        targetDate.getMonth(), 
+        targetDate.getDate()
+      ).getTime();
+      
+      // Sort by how close each date is to the target
+      const sorted = [...sortedData].sort((a, b) => {
+        const dateA = safeParseDate(a.date).getTime();
+        const dateB = safeParseDate(b.date).getTime();
+        return Math.abs(dateA - targetTime) - Math.abs(dateB - targetTime);
+      });
+      
+      // Return the closest match
+      return { 
+        nav: sorted[0].nav,
+        date: sorted[0].date 
+      };
+    };
+    
+    // Process initial lumpsum if available
+    if (initialInvestment > 0 && sortedData.length > 0) {
+      const startDateNAV = findNearestNAV(safeParseDate(sortedData[0].date));
+      totalUnits = initialInvestment / startDateNAV.nav;
       
       timeline.push({
-        date: format(date, 'MMM yyyy'),
-        value: Math.round(currentValue)
+        date: format(safeParseDate(startDateNAV.date), 'MMM yyyy'),
+        value: Math.round(initialInvestment)
       });
     }
     
-    return timeline;
+    // Generate SIP dates (monthly dates)
+    const sipDates: Date[] = [];
+    if (sortedData.length > 0) {
+      const firstDate = safeParseDate(sortedData[0].date);
+      const lastDate = safeParseDate(sortedData[sortedData.length - 1].date);
+      
+      // Start with the first month (after initial investment)
+      let currentDate = firstDate;
+      if (initialInvestment > 0) {
+        // If there was an initial investment, start SIP from next month
+        currentDate = addMonths(currentDate, 1);
+      }
+      
+      while (currentDate <= lastDate) {
+        sipDates.push(new Date(currentDate));
+        
+        // Move to next month - same day of month
+        currentDate = addMonths(currentDate, 1);
+      }
+    }
+    
+    // Process each SIP date
+    sipDates.forEach((sipDate) => {
+      // Find nearest NAV for this SIP date
+      const { nav, date } = findNearestNAV(sipDate);
+      
+      // Buy units
+      const newUnits = sipAmount / nav;
+      totalUnits += newUnits;
+      
+      // Calculate value on this date
+      const value = totalUnits * nav;
+      
+      timeline.push({
+        date: format(safeParseDate(date), 'MMM yyyy'),
+        value: Math.round(value)
+      });
+    });
+    
+    // Calculate final value
+    const endNav = sortedData[sortedData.length - 1].nav;
+    const totalValue = totalUnits * endNav;
+    
+    return {
+      timeline,
+      totalValue,
+      finalUnits: totalUnits,
+      endNav
+    };
+  };
+  
+  // Calculate XIRR (more accurate approximation)
+  const calculateApproxXIRR = (
+    initialInvestment: number,
+    monthlyInvestment: number,
+    finalValue: number,
+    months: number
+  ): number => {
+    if (months <= 0 || (initialInvestment === 0 && monthlyInvestment === 0) || finalValue <= 0) {
+      return 0;
+    }
+    
+    // Total investment
+    const totalInvestment = initialInvestment + (monthlyInvestment * months);
+    
+    if (totalInvestment === 0) {
+      return 0;
+    }
+
+    // For SIP investments, we use the direct reduction formula which gives a better approximation
+    // This accounts for the time value of money with regular periodic investments
+    
+    // We'll use an iterative approach to find the rate that makes NPV = 0
+    let guess = 0.1; // Start with 10% annual rate
+    const maxIterations = 20;
+    const tolerance = 0.0001;
+    
+    // Convert to monthly rate for calculations
+    let monthlyGuess = Math.pow(1 + guess, 1/12) - 1;
+    
+    for (let i = 0; i < maxIterations; i++) {
+      // Calculate present value of the final amount
+      const pvFinal = finalValue / Math.pow(1 + monthlyGuess, months);
+      
+      // Calculate present value of the SIP payments (using SIP present value formula)
+      // PV of SIP = PMT * ((1 - (1 + r)^-n) / r)
+      let pvSip = 0;
+      if (monthlyGuess > 0) {
+        pvSip = monthlyInvestment * ((1 - Math.pow(1 + monthlyGuess, -months)) / monthlyGuess);
+      } else {
+        pvSip = monthlyInvestment * months;
+      }
+      
+      // Calculate present value of initial investment
+      const pvInitial = initialInvestment;
+      
+      // Net present value
+      const npv = pvFinal - pvSip - pvInitial;
+      
+      // If we're close enough to zero, we've found our rate
+      if (Math.abs(npv) < tolerance) {
+        break;
+      }
+      
+      // Adjust our guess (simple adjustment method)
+      monthlyGuess = monthlyGuess * (1 + (npv > 0 ? 0.1 : -0.1));
+      
+      // Check for invalid values
+      if (monthlyGuess <= -1) {
+        return -100; // Return extreme negative XIRR
+      }
+    }
+    
+    // Convert back to annual rate
+    const annualRate = Math.pow(1 + monthlyGuess, 12) - 1;
+    
+    // Handle edge cases
+    if (isNaN(annualRate) || !isFinite(annualRate)) {
+      if (finalValue > totalInvestment) {
+        return 100; // High positive return
+      } else if (finalValue < totalInvestment) {
+        return -50; // High negative return
+      }
+      return 0;
+    }
+    
+    // Return as percentage
+    return annualRate * 100;
   };
   
   // Handle calculating SIP comparison
-  const calculateSipComparison = () => {
+  const calculateSipComparison = async () => {
+    if (selectedFunds.length === 0 || !startDate || !endDate) {
+      return;
+    }
+    
     setIsCalculating(true);
     setShowResults(false);
     
@@ -152,33 +390,75 @@ export default function SipComparePage() {
     const endDateObj = new Date(endDate);
     const totalMonths = differenceInMonths(endDateObj, startDateObj);
     
-    setTimeout(() => {
-      // Generate sample results for each fund
-      const mockResults = selectedFunds.map((fund, index) => {
-        const expectedReturn = 10 + index * 2; // Different returns for different funds
-        const totalInvestment = amount * totalMonths + initialLumpsum;
-        const totalValue = totalInvestment + Math.round(totalInvestment * expectedReturn / 100);
-        const absoluteReturn = ((totalValue - totalInvestment) / totalInvestment) * 100;
+    try {
+      // Fetch data for all selected funds
+      const fundsData = await Promise.all(
+        selectedFunds.map(fund => fetchFundData(fund.schemeCode))
+      );
+      
+      // Calculate results for each fund
+      const calculationResults = selectedFunds.map((fund, index) => {
+        const fundData = fundsData[index];
+        
+        if (!fundData || fundData.length === 0) {
+          // Handle missing data case
+          return {
+            schemeCode: fund.schemeCode,
+            schemeName: fund.schemeName,
+            totalInvestment: 0,
+            estimatedReturns: 0,
+            totalValue: 0,
+            absoluteReturn: 0,
+            xirr: 0,
+            finalUnits: 0,
+            endNav: 0,
+            color: colors[index % colors.length],
+            timeline: []
+          };
+        }
+        
+        // Calculate SIP value using real data
+        const { timeline, totalValue, finalUnits, endNav } = calculateSIPValue(
+          fundData, 
+          amount,
+          initialLumpsum
+        );
+        
+        // Calculate total invested amount based on actual SIP dates
+        // Initial investment + (monthly SIP amount * number of SIPs)
+        const totalInvestment = initialLumpsum + (amount * (timeline.length - (initialLumpsum > 0 ? 1 : 0)));
+        
+        // Calculate returns
+        const estimatedReturns = totalValue - totalInvestment;
+        const absoluteReturn = totalInvestment > 0 
+          ? ((totalValue - totalInvestment) / totalInvestment) * 100 
+          : 0;
+        
+        // Calculate XIRR - using the more accurate formula that accounts for periodic investments
+        const xirr = calculateApproxXIRR(initialLumpsum, amount, totalValue, totalMonths);
         
         return {
           schemeCode: fund.schemeCode,
           schemeName: fund.schemeName,
-          totalInvestment: totalInvestment,
-          estimatedReturns: Math.round(totalInvestment * expectedReturn / 100),
-          totalValue: totalValue,
+          totalInvestment,
+          estimatedReturns: Math.round(estimatedReturns),
+          totalValue: Math.round(totalValue),
           absoluteReturn: parseFloat(absoluteReturn.toFixed(2)),
-          xirr: (12 + index * 1.5),
-          finalUnits: Math.round(totalInvestment / (50 + index * 10)),
-          endNav: (50 + index * 10),
+          xirr: parseFloat(xirr.toFixed(2)),
+          finalUnits,
+          endNav,
           color: colors[index % colors.length],
-          timeline: generateTimelineData(totalMonths, expectedReturn, initialLumpsum)
+          timeline
         };
       });
       
-      setResults(mockResults);
-      setIsCalculating(false);
+      setResults(calculationResults);
       setShowResults(true);
-    }, 1500);
+    } catch (error) {
+      console.error("Error calculating SIP comparison:", error);
+    } finally {
+      setIsCalculating(false);
+    }
   };
   
   // Prepare chart data
@@ -201,19 +481,48 @@ export default function SipComparePage() {
     });
     
     // Create datasets for each fund
-    const datasets = results.map(result => ({
-      label: result.schemeName,
-      data: sortedDates.map(date => {
-        const point = result.timeline.find(p => p.date === date);
-        return point ? point.value : null;
-      }),
-      borderColor: result.color,
-      backgroundColor: result.color.replace('1)', '0.1)'),
-      borderWidth: 2,
-      tension: 0.3,
-      pointRadius: 2,
-      pointHoverRadius: 5
-    }));
+    const datasets = results.map(result => {
+      // For normalization, we'll calculate the cumulative investment at each point
+      const investmentTimeline: number[] = [];
+      let monthsElapsed = 0;
+      
+      // Calculate the investment amount at each time point
+      for (let i = 0; i < sortedDates.length; i++) {
+        // For the first point, it's just the initial lumpsum (if any)
+        if (i === 0) {
+          investmentTimeline.push(initialLumpsum > 0 ? initialLumpsum : amount);
+          monthsElapsed = 1;
+        } else {
+          // For subsequent points, add the monthly SIP amount
+          const prevInvestment: number = investmentTimeline[i-1];
+          investmentTimeline.push(prevInvestment + amount);
+          monthsElapsed++;
+        }
+      }
+      
+      return {
+        label: result.schemeName,
+        data: sortedDates.map((date, index) => {
+          const point = result.timeline.find(p => p.date === date);
+          // Calculate the normalized value - percentage growth over investment
+          if (point) {
+            const value = point.value;
+            const investment = investmentTimeline[index];
+            if (investment <= 0) return 0;
+            
+            // Calculate percentage gain/loss (return %)
+            return parseFloat(((value - investment) / investment * 100).toFixed(2));
+          }
+          return null;
+        }),
+        borderColor: result.color,
+        backgroundColor: result.color.replace('1)', '0.1)'),
+        borderWidth: 2,
+        tension: 0.3,
+        pointRadius: 2,
+        pointHoverRadius: 5
+      };
+    });
     
     return {
       labels: sortedDates,
@@ -230,14 +539,13 @@ export default function SipComparePage() {
     },
     scales: {
       y: {
-        beginAtZero: true,
         title: {
           display: true,
-          text: 'Value (₹)'
+          text: 'Return (%)'
         },
         ticks: {
           callback: function(value: any) {
-            return `₹${value.toLocaleString()}`;
+            return `${value}%`;
           }
         }
       },
@@ -254,7 +562,7 @@ export default function SipComparePage() {
           label: function(context: any) {
             const label = context.dataset.label || '';
             const value = context.raw || 0;
-            return `${label}: ₹${value.toLocaleString()}`;
+            return `${label}: ${value >= 0 ? '+' : ''}${value}%`;
           }
         }
       },
