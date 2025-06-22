@@ -14,6 +14,7 @@ const Navigation: React.FC = () => {
     { name: 'Dashboard', path: '/' },
     { name: 'SIP Calculator', path: '/sip-calculator' },
     { name: 'SIP Compare', path: '/sip-compare' },
+    { name: 'Financial Calculator', path: '/financial-calculator' },
     { name: 'Favorites', path: '/favorites' },
   ];
   

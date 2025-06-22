@@ -1035,7 +1035,7 @@ const SIPCalculatorContent: React.FC = () => {
                   <input
                     type="range"
                     min="0"
-                    max="1000000"
+                    max="10000000"
                     step="1000"
                     value={initialLumpsum}
                     onChange={(e) => setInitialLumpsum(Number(e.target.value))}
@@ -1043,7 +1043,7 @@ const SIPCalculatorContent: React.FC = () => {
                   />
                   <div className="flex justify-between text-xs text-slate-500 mt-1">
                     <span>₹0</span>
-                    <span>₹1,000,000</span>
+                    <span>₹10000000</span>
                   </div>
                 </div>
                 
@@ -1058,7 +1058,7 @@ const SIPCalculatorContent: React.FC = () => {
                   <input
                     type="range"
                     min="0"
-                    max="100000"
+                    max="1000000"
                     step="100"
                     value={amount}
                     onChange={(e) => setAmount(Number(e.target.value))}
@@ -1066,7 +1066,7 @@ const SIPCalculatorContent: React.FC = () => {
                   />
                   <div className="flex justify-between text-xs text-slate-500 mt-1">
                     <span>₹0</span>
-                    <span>₹100,000</span>
+                    <span>₹1000000</span>
                   </div>
                 </div>
                 

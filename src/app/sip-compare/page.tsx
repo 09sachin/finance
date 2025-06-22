@@ -21,6 +21,7 @@ import {
 } from 'chart.js';
 import { useSearchParams } from 'next/navigation';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import SliderWithInput from '../components/SliderWithInput';
 
 // Register ChartJS components
 ChartJS.register(
@@ -129,7 +130,7 @@ function SipCompareContent() {
   ];
   
   // Maximum number of funds to compare
-  const MAX_FUNDS = 5;
+  const MAX_FUNDS = 15;
   
   // Safely parse a date string to handle different formats
   const safeParseDate = (dateString: string): Date => {
@@ -352,65 +353,74 @@ function SipCompareContent() {
       return 0;
     }
 
-    // For SIP investments, we use the direct reduction formula which gives a better approximation
-    // This accounts for the time value of money with regular periodic investments
+    // More accurate XIRR calculation using Newton-Raphson method
+    // Start with an initial guess
+    let guess = 0.1; // 10%
+    const maxIterations = 100;
+    const tolerance = 0.0000001;
     
-    // We'll use an iterative approach to find the rate that makes NPV = 0
-    let guess = 0.1; // Start with 10% annual rate
-    const maxIterations = 20;
-    const tolerance = 0.0001;
-    
-    // Convert to monthly rate for calculations
-    let monthlyGuess = Math.pow(1 + guess, 1/12) - 1;
-    
-    for (let i = 0; i < maxIterations; i++) {
-      // Calculate present value of the final amount
-      const pvFinal = finalValue / Math.pow(1 + monthlyGuess, months);
+    // Function to calculate NPV (Net Present Value)
+    const calculateNPV = (rate: number): number => {
+      // Present value of the final amount
+      const pvFinal = finalValue / Math.pow(1 + rate, months/12);
       
-      // Calculate present value of the SIP payments (using SIP present value formula)
-      // PV of SIP = PMT * ((1 - (1 + r)^-n) / r)
-      let pvSip = 0;
-      if (monthlyGuess > 0) {
-        pvSip = monthlyInvestment * ((1 - Math.pow(1 + monthlyGuess, -months)) / monthlyGuess);
-      } else {
-        pvSip = monthlyInvestment * months;
+      // For monthly SIP, we need to calculate present value of each payment
+      let pvSIP = 0;
+      
+      // For each month, calculate the present value of the SIP payment
+      for (let i = 1; i <= months; i++) {
+        pvSIP += monthlyInvestment / Math.pow(1 + rate, i/12);
       }
       
-      // Calculate present value of initial investment
-      const pvInitial = initialInvestment;
-      
-      // Net present value
-      const npv = pvFinal - pvSip - pvInitial;
+      // Present value of initial investment is just the investment itself
+      return pvFinal - pvSIP - initialInvestment;
+    };
+    
+    // Function to calculate the derivative of NPV with respect to rate
+    const calculateNPVDerivative = (rate: number): number => {
+      const h = 0.000001; // Small increment for numerical differentiation
+      return (calculateNPV(rate + h) - calculateNPV(rate)) / h;
+    };
+    
+    // Newton-Raphson Method
+    for (let i = 0; i < maxIterations; i++) {
+      const npv = calculateNPV(guess);
       
       // If we're close enough to zero, we've found our rate
       if (Math.abs(npv) < tolerance) {
         break;
       }
       
-      // Adjust our guess (simple adjustment method)
-      monthlyGuess = monthlyGuess * (1 + (npv > 0 ? 0.1 : -0.1));
+      const derivative = calculateNPVDerivative(guess);
       
-      // Check for invalid values
-      if (monthlyGuess <= -1) {
+      // Avoid division by zero
+      if (Math.abs(derivative) < tolerance) {
+        break;
+      }
+      
+      // Newton's formula: x_new = x_old - f(x_old) / f'(x_old)
+      const newGuess = guess - npv / derivative;
+      
+      // Check if the improvement is small enough
+      if (Math.abs(newGuess - guess) < tolerance) {
+        guess = newGuess;
+        break;
+      }
+      
+      guess = newGuess;
+      
+      // Guard against divergence
+      if (guess <= -1) {
         return -100; // Return extreme negative XIRR
       }
-    }
-    
-    // Convert back to annual rate
-    const annualRate = Math.pow(1 + monthlyGuess, 12) - 1;
-    
-    // Handle edge cases
-    if (isNaN(annualRate) || !isFinite(annualRate)) {
-      if (finalValue > totalInvestment) {
-        return 100; // High positive return
-      } else if (finalValue < totalInvestment) {
-        return -50; // High negative return
+      
+      if (guess > 100) {
+        return 100; // Return extreme positive XIRR
       }
-      return 0;
     }
     
-    // Return as percentage
-    return annualRate * 100;
+    // Convert to percentage
+    return guess * 100;
   };
   
   // Handle calculating SIP comparison
@@ -654,7 +664,7 @@ function SipCompareContent() {
         
         <div className="grid grid-cols-1 gap-4 sm:gap-6">
           {/* Search area */}
-          <div className="app-card">
+          <div className="app-card relative z-10">
             <div 
               className="p-4 flex items-center justify-between cursor-pointer"
               onClick={() => setSearchOpen(!searchOpen)}
@@ -733,50 +743,26 @@ function SipCompareContent() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* SIP Amount */}
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                      Monthly SIP Amount (₹)
-                    </label>
-                    <span className="text-sm font-semibold">₹{amount.toLocaleString()}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="500"
-                    max="100000"
-                    step="500"
-                    value={amount}
-                    onChange={(e) => setAmount(Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                  />
-                  <div className="flex justify-between text-xs text-slate-500 mt-1">
-                    <span>₹500</span>
-                    <span>₹100,000</span>
-                  </div>
-                </div>
+                <SliderWithInput
+                  label="Monthly SIP Amount"
+                  value={amount}
+                  onChange={setAmount}
+                  min={500}
+                  max={1000000}
+                  step={500}
+                  prefix="₹"
+                />
                 
                 {/* Initial Lumpsum */}
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                      Initial Lumpsum (₹)
-                    </label>
-                    <span className="text-sm font-semibold">₹{initialLumpsum.toLocaleString()}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1000000"
-                    step="10000"
-                    value={initialLumpsum}
-                    onChange={(e) => setInitialLumpsum(Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                  />
-                  <div className="flex justify-between text-xs text-slate-500 mt-1">
-                    <span>₹0</span>
-                    <span>₹1,000,000</span>
-                  </div>
-                </div>
+                <SliderWithInput
+                  label="Initial Lumpsum"
+                  value={initialLumpsum}
+                  onChange={setInitialLumpsum}
+                  min={0}
+                  max={10000000}
+                  step={10000}
+                  prefix="₹"
+                />
                 
                 {/* Date Range */}
                 <div>
