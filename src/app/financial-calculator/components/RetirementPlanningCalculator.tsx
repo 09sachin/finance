@@ -298,9 +298,13 @@ export default function RetirementPlanningCalculator() {
         const totalYearlyInvestment = yearlyInvestment + lumpsumInvestmentThisYear;        
         yearlyGrowth = currentCorpus * avgRate;
         currentCorpus += totalYearlyInvestment + yearlyGrowth;
-        
+        const oneTimeWithdrawalAmount = oneTimeWithdrawals
+          .filter(w => new Date(w.date).getFullYear() === projectionYear)
+          .reduce((sum, w) => sum + parseFloat(w.amount), 0);
         // No LTCG tax during accumulation phase (unrealized gains)
-        ltcgTaxForYear = 0;
+        const estimatedGainsInWithdrawal = oneTimeWithdrawalAmount * 0.5;
+        ltcgTaxForYear = (estimatedGainsInWithdrawal - ltcgExemptionLimit) * ltcgTaxRate;
+        currentCorpus = currentCorpus + yearlyGrowth - oneTimeWithdrawalAmount - ltcgTaxForYear;
       } else {      
         // After SWP start: withdrawals with LTCG tax on realized gains
         const totalYearlyWithdrawal = totalMonthlyNeeds * 12;
