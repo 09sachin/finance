@@ -32,13 +32,13 @@ interface RetirementGoal {
 
 export default function RetirementPlanningCalculator() {
   // Personal Info
-  const [currentAge, setCurrentAge] = useState('30');
-  const [retirementAge, setRetirementAge] = useState('60');
+  const [currentAge, setCurrentAge] = useState('25');
+  const [retirementAge, setRetirementAge] = useState('40');
   
   // Lumpsum Investments
   const [lumpsumInvestments, setLumpsumInvestments] = useState<LumpsumInvestment[]>([{
     id: '1',
-    amount: '500000',
+    amount: '2500000',
     investmentDate: new Date().toISOString().split('T')[0],
     annualRate: '12'
   }]);
@@ -46,18 +46,18 @@ export default function RetirementPlanningCalculator() {
   // SIP Investments
   const [sipInvestments, setSipInvestments] = useState<SIPInvestment[]>([{
     id: '1',
-    monthlyAmount: '25000',
+    monthlyAmount: '125000',
     startDate: new Date().toISOString().split('T')[0],
     endDate: (() => {
       const date = new Date();
-      date.setFullYear(date.getFullYear() + 30);
+      date.setFullYear(date.getFullYear() + 15);
       return date.toISOString().split('T')[0];
     })(),
     annualRate: '12'
   }]);
 
   // SWP Settings
-  const [swpStartAge, setSwpStartAge] = useState('60');
+  const [swpStartAge, setSwpStartAge] = useState('40');
   const [swpAnnualRate, setSwpAnnualRate] = useState('8');
 
   // One-time Withdrawals
@@ -68,8 +68,8 @@ export default function RetirementPlanningCalculator() {
     {
       id: '1',
       description: 'Monthly Living Expenses',
-      monthlyAmount: '75000',
-      startAge: '60',
+      monthlyAmount: '125000',
+      startAge: '40',
       duration: 'lifetime'
     }
   ]);
@@ -107,7 +107,7 @@ export default function RetirementPlanningCalculator() {
   const addLumpsumInvestment = () => {
     const newInvestment: LumpsumInvestment = {
       id: Date.now().toString(),
-      amount: '100000',
+      amount: '1000000',
       investmentDate: new Date().toISOString().split('T')[0],
       annualRate: '12'
     };
@@ -123,7 +123,7 @@ export default function RetirementPlanningCalculator() {
   const addSIPInvestment = () => {
     const newSIP: SIPInvestment = {
       id: Date.now().toString(),
-      monthlyAmount: '10000',
+      monthlyAmount: '100000',
       startDate: new Date().toISOString().split('T')[0],
       endDate: (() => {
         const date = new Date();
@@ -144,10 +144,10 @@ export default function RetirementPlanningCalculator() {
   const addOneTimeWithdrawal = () => {
     const newWithdrawal: OneTimeWithdrawal = {
       id: Date.now().toString(),
-      amount: '500000',
+      amount: '1500000',
       date: (() => {
         const date = new Date();
-        date.setFullYear(date.getFullYear() + 10);
+        date.setFullYear(date.getFullYear() + 3);
         return date.toISOString().split('T')[0];
       })(),
       description: 'Car Purchase'
@@ -163,7 +163,7 @@ export default function RetirementPlanningCalculator() {
     const newGoal: RetirementGoal = {
       id: Date.now().toString(),
       description: 'Travel Fund',
-      monthlyAmount: '20000',
+      monthlyAmount: '25000',
       startAge: '60',
       duration: '10'
     };
@@ -301,10 +301,10 @@ export default function RetirementPlanningCalculator() {
         const oneTimeWithdrawalAmount = oneTimeWithdrawals
           .filter(w => new Date(w.date).getFullYear() === projectionYear)
           .reduce((sum, w) => sum + parseFloat(w.amount), 0);
-        // No LTCG tax during accumulation phase (unrealized gains)
+
         const estimatedGainsInWithdrawal = oneTimeWithdrawalAmount * 0.5;
-        ltcgTaxForYear = (estimatedGainsInWithdrawal - ltcgExemptionLimit) * ltcgTaxRate;
-        currentCorpus = currentCorpus + yearlyGrowth - oneTimeWithdrawalAmount - ltcgTaxForYear;
+        ltcgTaxForYear = Math.max(0, (estimatedGainsInWithdrawal - ltcgExemptionLimit) * ltcgTaxRate);
+        currentCorpus = currentCorpus  - oneTimeWithdrawalAmount - ltcgTaxForYear;
       } else {      
         // After SWP start: withdrawals with LTCG tax on realized gains
         const totalYearlyWithdrawal = totalMonthlyNeeds * 12;
