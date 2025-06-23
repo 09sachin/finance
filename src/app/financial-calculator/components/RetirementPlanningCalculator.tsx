@@ -57,7 +57,6 @@ export default function RetirementPlanningCalculator() {
   }]);
 
   // SWP Settings
-  const [swpStartAge, setSwpStartAge] = useState('40');
   const [swpAnnualRate, setSwpAnnualRate] = useState('8');
 
   // One-time Withdrawals
@@ -100,7 +99,17 @@ export default function RetirementPlanningCalculator() {
       description: string;
       monthlyAmount: number;
       isAffordable: boolean;
+      startAge: number;
+      endAge: number | 'Lifetime';
+      sustainabilityStatus: string;
     }>;
+    corpusDepletionAge: number | null;
+    sustainabilityAnalysis: {
+      isSustainableToAge80: boolean;
+      isSustainableForLifetime: boolean;
+      minSustainabilityAge: number;
+      corpusDepletionAge: number | null;
+    };
   }>(null);
 
   // Add/Remove functions
@@ -164,7 +173,7 @@ export default function RetirementPlanningCalculator() {
       id: Date.now().toString(),
       description: 'Travel Fund',
       monthlyAmount: '25000',
-      startAge: '60',
+      startAge: retirementAge,
       duration: '10'
     };
     setRetirementGoals([...retirementGoals, newGoal]);
@@ -179,200 +188,254 @@ export default function RetirementPlanningCalculator() {
   const calculateRetirementPlan = () => {
     const currentAgeNum = parseInt(currentAge);
     const retirementAgeNum = parseInt(retirementAge);
-    const swpStartAgeNum = parseInt(swpStartAge);
     const swpRate = parseFloat(swpAnnualRate) / 100;
 
     // LTCG Tax Settings (India)
     const ltcgTaxRate = 0.125; // 12.5%
     const ltcgExemptionLimit = 125000; // Rs. 1.25 lakh per year
 
-    // Calculate corpus from lumpsum investments
-    let totalCorpusAtRetirement = 0;
-    let totalInvestment = 0;
-    const currentDate = new Date();
-    const retirementDate = new Date();
-    retirementDate.setFullYear(retirementDate.getFullYear() + (retirementAgeNum - currentAgeNum));
-
-    // Lumpsum contributions
-    for (const investment of lumpsumInvestments) {
-      const amount = parseFloat(investment.amount);
-      const rate = parseFloat(investment.annualRate) / 100;
-      const investDate = new Date(investment.investmentDate);
-      const yearsToRetirement = Math.max(0, (retirementDate.getTime() - investDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
-      
-      if (amount > 0 && rate > 0) {
-        const futureValue = amount * Math.pow(1 + rate, yearsToRetirement);
-        totalCorpusAtRetirement += futureValue;
-        totalInvestment += amount;
-      }
-    }
-
-    // SIP contributions
-    for (const sip of sipInvestments) {
-      const monthlyAmount = parseFloat(sip.monthlyAmount);
-      const rate = parseFloat(sip.annualRate) / 100;
-      const monthlyRate = rate / 12;
-      const startDate = new Date(sip.startDate);
-      const endDate = new Date(sip.endDate);
-      
-      // Calculate SIP value at retirement
-      const sipEndDate = endDate < retirementDate ? endDate : retirementDate;
-      const sipMonths = Math.max(0, (sipEndDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
-      const growthMonths = Math.max(0, (retirementDate.getTime() - sipEndDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
-      
-      if (monthlyAmount > 0 && rate > 0 && sipMonths > 0) {
-        const sipFV = monthlyAmount * ((Math.pow(1 + monthlyRate, sipMonths) - 1) / monthlyRate) * (1 + monthlyRate);
-        const finalValue = sipFV * Math.pow(1 + monthlyRate, growthMonths);
-        totalCorpusAtRetirement += finalValue;
-        totalInvestment += monthlyAmount * sipMonths;
-      }
-    }
-
-    // LTCG Tax will be calculated during withdrawal phase only
-    // No upfront LTCG tax calculation since gains are unrealized until withdrawal
-    const totalLTCGTax = 0; // Will be calculated dynamically during SWP phase
-    const postTaxCorpus = totalCorpusAtRetirement; // No upfront tax deduction
-    // Calculate total monthly retirement needs
-    const totalMonthlyNeeds = retirementGoals.reduce((sum, goal) => {
-      const amount = parseFloat(goal.monthlyAmount);
-      return sum + (isNaN(amount) ? 0 : amount);
-    }, 0);
-
-    // Calculate FIRE age (when corpus can support all expenses)
-    const monthlyPassiveIncome = postTaxCorpus * (swpRate / 12);
-    const isFIREAchievable = monthlyPassiveIncome >= totalMonthlyNeeds;
-    
-    // More sophisticated FIRE age calculation
-    let fireAge = retirementAgeNum;
-    if (!isFIREAchievable) {
-      const requiredCorpus = totalMonthlyNeeds / (swpRate / 12);
-      // Estimate additional years needed
-      const shortfall = requiredCorpus - postTaxCorpus;
-      const avgMonthlySIP = sipInvestments.reduce((sum, sip) => sum + parseFloat(sip.monthlyAmount), 0);
-      const avgSIPRate = sipInvestments.reduce((sum, sip) => sum + parseFloat(sip.annualRate), 0) / sipInvestments.length / 100;
-      
-      if (avgMonthlySIP > 0 && avgSIPRate > 0) {
-        const monthlyRate = avgSIPRate / 12;
-        const additionalMonths = Math.log(1 + (shortfall * monthlyRate) / avgMonthlySIP) / Math.log(1 + monthlyRate);
-        fireAge = retirementAgeNum + Math.ceil(additionalMonths / 12);
-      }
-    }
-
-    // Generate detailed 50-year breakdown
-    const corpusBreakdown = [];
-    let currentCorpus = 0; // Start from 0 and build year by year
+    // Generate detailed year-by-year breakdown which is the source of truth
+    const corpusBreakdown: Array<{
+      year: number;
+      age: number;
+      startingCorpus: number;
+      corpus: number;
+      yearlyInvestment: number;
+      yearlyGrowth: number;
+      monthlyWithdrawals: number;
+      oneTimeWithdrawals: number;
+      ltcgTax: number;
+      remainingCorpus: number;
+    }> = [];
+    let currentCorpus = 0;
+    let totalInvestedCapital = 0;
     const startYear = new Date().getFullYear();
-    
-    for (let year = 0; year < 50; year++) {
+    const maxYears = 100 - currentAgeNum; // Project until age 100
+
+    for (let year = 0; year <= maxYears; year++) {
       const age = currentAgeNum + year;
       const projectionYear = startYear + year;
-      
-      // Store the corpus at the START of this year
+
       const startingCorpus = currentCorpus;
+
+      // 1. Investments for the year
+      const yearlyLumpsum = lumpsumInvestments
+        .filter(inv => new Date(inv.investmentDate).getFullYear() === projectionYear)
+        .reduce((sum, inv) => sum + parseFloat(inv.amount), 0);
       
-      let yearlyWithdrawals = 0;
-      let yearlyGrowth = 0;
-      let ltcgTaxForYear = 0;
-      
-      // Before retirement: continue investments
-      if (age < swpStartAgeNum) {
-        // Add SIP contributions
-        const activeSIPs = sipInvestments.filter(sip => {
+      const yearlySIP = sipInvestments
+        .filter(sip => {
           const sipStart = new Date(sip.startDate).getFullYear();
           const sipEnd = new Date(sip.endDate).getFullYear();
-          return projectionYear >= sipStart && projectionYear <= sipEnd;
-        });
-        
-        const yearlyInvestment = activeSIPs.reduce((sum, sip) => {
-          return sum + parseFloat(sip.monthlyAmount) * 12;
-        }, 0);
-        
-        const avgRate = activeSIPs.length > 0 ? 
-          activeSIPs.reduce((sum, sip) => sum + parseFloat(sip.annualRate), 0) / activeSIPs.length / 100 : 0.12;
+          return projectionYear >= sipStart && projectionYear < sipEnd;
+        })
+        .reduce((sum, sip) => sum + parseFloat(sip.monthlyAmount) * 12, 0);
+      
+      const totalYearlyInvestment = yearlyLumpsum + yearlySIP;
+      
+      const corpusAfterInvestment = startingCorpus + totalYearlyInvestment;
+      const investedCapitalAfterInvestment = totalInvestedCapital + totalYearlyInvestment;
 
-        // Add lumpsum investments for this year
-        const lumpsumInvestmentThisYear = lumpsumInvestments
-          .filter(inv => new Date(inv.investmentDate).getFullYear() === projectionYear)
-          .reduce((sum, inv) => sum + parseFloat(inv.amount), 0);
-
-        const totalYearlyInvestment = yearlyInvestment + lumpsumInvestmentThisYear;        
-        yearlyGrowth = currentCorpus * avgRate;
-        currentCorpus += totalYearlyInvestment + yearlyGrowth;
-        const oneTimeWithdrawalAmount = oneTimeWithdrawals
-          .filter(w => new Date(w.date).getFullYear() === projectionYear)
-          .reduce((sum, w) => sum + parseFloat(w.amount), 0);
-
-        const estimatedGainsInWithdrawal = oneTimeWithdrawalAmount * 0.5;
-        ltcgTaxForYear = Math.max(0, (estimatedGainsInWithdrawal - ltcgExemptionLimit) * ltcgTaxRate);
-        currentCorpus = currentCorpus  - oneTimeWithdrawalAmount - ltcgTaxForYear;
-      } else {      
-        // After SWP start: withdrawals with LTCG tax on realized gains
-        const totalYearlyWithdrawal = totalMonthlyNeeds * 12;
-        yearlyGrowth = currentCorpus * swpRate;
-        const oneTimeWithdrawalAmount = oneTimeWithdrawals
-          .filter(w => new Date(w.date).getFullYear() === projectionYear)
-          .reduce((sum, w) => sum + parseFloat(w.amount), 0);
+      // 2. Growth for the year
+      const preRetirementRate = (() => {
+        const allInvestments = [
+          ...lumpsumInvestments.map(inv => ({ amount: parseFloat(inv.amount), rate: parseFloat(inv.annualRate) / 100 })),
+          ...sipInvestments.map(sip => ({ amount: parseFloat(sip.monthlyAmount) * 12, rate: parseFloat(sip.annualRate) / 100 })),
+        ];
+        const totalValue = allInvestments.reduce((sum, inv) => sum + inv.amount, 0);
+        if (totalValue === 0) return 0.12; // Default rate
         
-        yearlyWithdrawals = totalYearlyWithdrawal + oneTimeWithdrawalAmount;
-        
-        // Calculate LTCG tax on realized gains from withdrawals
-        if (yearlyWithdrawals > 0 && currentCorpus > 0) {
-          // Estimate gains as percentage of withdrawal amount
-          // Simplified assumption: 50% of corpus value represents gains
-          const withdrawalAmount = Math.min(yearlyWithdrawals, currentCorpus + yearlyGrowth);
-          const estimatedGainsInWithdrawal = withdrawalAmount * 0.5;
-          
-          if (estimatedGainsInWithdrawal > ltcgExemptionLimit) {
-            ltcgTaxForYear = (estimatedGainsInWithdrawal - ltcgExemptionLimit) * ltcgTaxRate;
-          }
+        const weightedRate = allInvestments.reduce((sum, inv) => sum + inv.amount * inv.rate, 0) / totalValue;
+        return weightedRate;
+      })();
+      
+      const growthRate = age < retirementAgeNum ? preRetirementRate : swpRate;
+      const yearlyGrowth = corpusAfterInvestment * growthRate;
+      const corpusAfterGrowth = corpusAfterInvestment + yearlyGrowth;
+      
+      // 3. Withdrawals for the year
+      const oneTimeWithdrawalAmount = oneTimeWithdrawals
+        .filter(w => new Date(w.date).getFullYear() === projectionYear)
+        .reduce((sum, w) => sum + parseFloat(w.amount), 0);
+
+      const monthlyNeeds = retirementGoals.reduce((sum, goal) => {
+        const startAge = parseInt(goal.startAge);
+        const duration = goal.duration === 'lifetime' ? 999 : parseInt(goal.duration);
+        if (age >= startAge && age < startAge + duration) {
+          const amount = parseFloat(goal.monthlyAmount);
+          return sum + (isNaN(amount) ? 0 : amount);
         }
+        return sum;
+      }, 0);
+
+      const totalYearlyWithdrawals = (monthlyNeeds * 12) + oneTimeWithdrawalAmount;
+
+      // 4. Tax Calculation on Withdrawals
+      let ltcgTaxForYear = 0;
+      let corpusAfterWithdrawalsAndTax = corpusAfterGrowth;
+      let capitalAfterWithdrawals = investedCapitalAfterInvestment;
+
+      if (totalYearlyWithdrawals > 0 && corpusAfterGrowth > 0) {
+        const withdrawalAmount = Math.min(totalYearlyWithdrawals, corpusAfterGrowth);
         
-        currentCorpus = currentCorpus + yearlyGrowth - yearlyWithdrawals - ltcgTaxForYear;
+        const totalGains = Math.max(0, corpusAfterGrowth - investedCapitalAfterInvestment);
+        const gainsProportion = corpusAfterGrowth > 0 ? totalGains / corpusAfterGrowth : 0;
+
+        const realizedGains = withdrawalAmount * gainsProportion;
+        const principalWithdrawn = withdrawalAmount * (1 - gainsProportion);
+
+        ltcgTaxForYear = Math.max(0, realizedGains - ltcgExemptionLimit) * ltcgTaxRate;
+        
+        corpusAfterWithdrawalsAndTax = corpusAfterGrowth - withdrawalAmount - ltcgTaxForYear;
+        capitalAfterWithdrawals = investedCapitalAfterInvestment - principalWithdrawn;
+      } else {
+        corpusAfterWithdrawalsAndTax = corpusAfterGrowth - totalYearlyWithdrawals;
       }
+
+      currentCorpus = Math.max(0, corpusAfterWithdrawalsAndTax);
+      totalInvestedCapital = Math.max(0, capitalAfterWithdrawals);
+
       corpusBreakdown.push({
         year: projectionYear,
         age,
-        startingCorpus: Math.max(0, startingCorpus), // Corpus at START of year
-        corpus: Math.max(0, currentCorpus), // Corpus at END of year
-        yearlyInvestment: age < swpStartAgeNum ? (sipInvestments.reduce((sum, sip) => {
-          const sipStart = new Date(sip.startDate).getFullYear();
-          const sipEnd = new Date(sip.endDate).getFullYear();
-          return projectionYear >= sipStart && projectionYear <= sipEnd ? 
-            sum + parseFloat(sip.monthlyAmount) * 12 : sum;
-        }, 0) + lumpsumInvestments.filter(inv => new Date(inv.investmentDate).getFullYear() === projectionYear).reduce((sum, inv) => sum + parseFloat(inv.amount), 0)) : 0,
-        yearlyGrowth,
-        monthlyWithdrawals: age >= swpStartAgeNum ? totalMonthlyNeeds : 0,
-        oneTimeWithdrawals: oneTimeWithdrawals
-          .filter(w => new Date(w.date).getFullYear() === projectionYear)
-          .reduce((sum, w) => sum + parseFloat(w.amount), 0),
+        startingCorpus: startingCorpus,
+        corpus: currentCorpus,
+        yearlyInvestment: totalYearlyInvestment,
+        yearlyGrowth: yearlyGrowth,
+        monthlyWithdrawals: monthlyNeeds,
+        oneTimeWithdrawals: oneTimeWithdrawalAmount,
         ltcgTax: ltcgTaxForYear,
-        remainingCorpus: Math.max(0, currentCorpus)
+        remainingCorpus: currentCorpus,
       });
-      
-      if (currentCorpus <= 0 && age >= swpStartAgeNum) break;
+
+      // Stop if corpus is depleted post-retirement
+      if (currentCorpus <= 0 && age >= retirementAgeNum) {
+        // Add one more year to show corpus exhaustion
+        if(corpusBreakdown[corpusBreakdown.length-1]?.remainingCorpus === 0) break;
+      }
     }
 
-    // Calculate total LTCG tax from withdrawal years
-    const actualTotalLTCGTax = corpusBreakdown.reduce((sum, year) => sum + year.ltcgTax, 0);
-    // Goal analysis
-    const goalAnalysis = retirementGoals.map(goal => ({
-      goalId: goal.id,
-      description: goal.description,
-      monthlyAmount: parseFloat(goal.monthlyAmount),
-      isAffordable: monthlyPassiveIncome >= parseFloat(goal.monthlyAmount)
-    }));
+    // Derive all summary results from the detailed breakdown for consistency
+    const corpusAtRetirement = corpusBreakdown.find(b => b.age === retirementAgeNum)?.startingCorpus ?? 0;
+    
+    const totalMonthlyNeedsAtRetirement = retirementGoals.reduce((sum, goal) => {
+      const startAge = parseInt(goal.startAge);
+      if (retirementAgeNum >= startAge) {
+          const amount = parseFloat(goal.monthlyAmount);
+          return sum + (isNaN(amount) ? 0 : amount);
+      }
+      return sum;
+    }, 0);
+
+    // FIRE Sustainability Check - corpus must sustain until at least age 80 or lifetime
+    const minSustainabilityAge = Math.max(80, retirementAgeNum + 20); // At least 20 years post-retirement or age 80
+    const sustainabilityBreakdown = corpusBreakdown.filter(b => b.age >= retirementAgeNum && b.age <= minSustainabilityAge);
+    const corpusDepletionAge = corpusBreakdown.find(b => b.age >= retirementAgeNum && b.remainingCorpus <= 0)?.age;
+    
+    // Check if corpus sustains for required duration
+    const isSustainableToAge80 = !corpusDepletionAge || corpusDepletionAge > minSustainabilityAge;
+    
+    // Check if corpus sustains for lifetime goals
+    const hasLifetimeGoals = retirementGoals.some(g => g.duration === 'lifetime');
+    const isSustainableForLifetime = hasLifetimeGoals ? 
+      (!corpusDepletionAge || corpusDepletionAge > 90) : true; // Assume 90+ is "lifetime"
+    
+    const isFIREAchievable = isSustainableToAge80 && isSustainableForLifetime;
+    
+    const monthlyPassiveIncome = corpusAtRetirement * (swpRate / 12);
+
+    // Calculate actual FIRE age - age when corpus can sustain expenses indefinitely
+    let fireAge = 100; // Default to "not achievable"
+    
+    if (isFIREAchievable) {
+      fireAge = retirementAgeNum;
+    } else {
+      // Find the earliest age where sustainability is achieved
+      for (let testAge = currentAgeNum; testAge <= 100; testAge++) {
+        const testCorpus = corpusBreakdown.find(b => b.age === testAge)?.startingCorpus ?? 0;
+        
+        // Simulate withdrawals from this age to check sustainability
+        let simulatedCorpus = testCorpus;
+        let isSustainable = true;
+        
+        for (let futureAge = testAge; futureAge <= minSustainabilityAge && isSustainable; futureAge++) {
+          const futureMonthlyNeeds = retirementGoals.reduce((sum, goal) => {
+            const startAge = parseInt(goal.startAge);
+            const duration = goal.duration === 'lifetime' ? 999 : parseInt(goal.duration);
+            if (futureAge >= Math.max(startAge, testAge) && futureAge < startAge + duration) {
+              const amount = parseFloat(goal.monthlyAmount);
+              return sum + (isNaN(amount) ? 0 : amount);
+            }
+            return sum;
+          }, 0);
+          
+          const annualWithdrawal = futureMonthlyNeeds * 12;
+          const growth = simulatedCorpus * swpRate;
+          simulatedCorpus = simulatedCorpus + growth - annualWithdrawal;
+          
+          if (simulatedCorpus <= 0) {
+            isSustainable = false;
+          }
+        }
+        
+        if (isSustainable) {
+          fireAge = testAge;
+          break;
+        }
+      }
+    }
+    
+    const totalInvestment = corpusBreakdown.reduce((sum, b) => sum + b.yearlyInvestment, 0);
+    const totalLTCGTax = corpusBreakdown.reduce((sum, b) => sum + b.ltcgTax, 0);
+
+    // Enhanced Goal Analysis - check actual sustainability for each goal
+    const goalAnalysis = retirementGoals.map(goal => {
+      const monthlyAmount = parseFloat(goal.monthlyAmount);
+      const startAge = parseInt(goal.startAge);
+      const duration = goal.duration === 'lifetime' ? 999 : parseInt(goal.duration);
+      const endAge: number | 'Lifetime' = duration === 999 ? 'Lifetime' : startAge + duration;
+      
+      // Find when this goal becomes active and check if corpus can sustain it
+      const goalActiveBreakdown = corpusBreakdown.filter(b => 
+        b.age >= startAge && (duration === 999 || b.age < startAge + duration)
+      );
+      
+      // Check if corpus remains positive throughout the goal duration
+      const isAffordable = goalActiveBreakdown.length > 0 && 
+        goalActiveBreakdown.every(b => b.remainingCorpus > 0) &&
+        (duration !== 999 || !corpusDepletionAge || corpusDepletionAge > 90);
+      
+      return {
+        goalId: goal.id,
+        description: goal.description,
+        monthlyAmount: isNaN(monthlyAmount) ? 0 : monthlyAmount,
+        isAffordable: isAffordable,
+        startAge: startAge,
+        endAge: endAge,
+        sustainabilityStatus: isAffordable ? 'Sustainable' : 
+          (corpusDepletionAge && corpusDepletionAge < (typeof endAge === 'number' ? endAge : 90)) ? 
+          `Corpus depletes at age ${corpusDepletionAge}` : 'Insufficient corpus'
+      }
+    });
 
     setResult({
-      totalCorpusAtRetirement: postTaxCorpus,
-      totalCorpusBeforeTax: totalCorpusAtRetirement,
+      totalCorpusAtRetirement: corpusAtRetirement,
+      totalCorpusBeforeTax: corpusAtRetirement, // In this model, tax is on withdrawal, not upfront
       totalInvestment,
-      totalLTCGTax: actualTotalLTCGTax,
+      totalLTCGTax,
       fireAge,
       isFIREAchievable,
-      totalMonthlyNeeds,
+      totalMonthlyNeeds: totalMonthlyNeedsAtRetirement,
       monthlyPassiveIncome,
       corpusBreakdown,
-      goalAnalysis
+      goalAnalysis,
+      corpusDepletionAge: corpusDepletionAge || null,
+      sustainabilityAnalysis: {
+        isSustainableToAge80,
+        isSustainableForLifetime,
+        minSustainabilityAge,
+        corpusDepletionAge: corpusDepletionAge || null
+      }
     });
   };
 
@@ -414,7 +477,18 @@ export default function RetirementPlanningCalculator() {
             <input 
               type="number" 
               value={retirementAge} 
-              onChange={e => setRetirementAge(e.target.value)}
+              onChange={e => {
+                const newRetirementAge = e.target.value;
+                setRetirementAge(newRetirementAge);
+                
+                // Auto-adjust retirement goals start ages if they're below new retirement age
+                setRetirementGoals(retirementGoals.map(goal => ({
+                  ...goal,
+                  startAge: parseInt(goal.startAge) < parseInt(newRetirementAge) 
+                    ? newRetirementAge 
+                    : goal.startAge
+                })));
+              }}
               className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
             />
           </div>
@@ -573,9 +647,9 @@ export default function RetirementPlanningCalculator() {
             <label className="block text-sm font-medium text-orange-700 dark:text-orange-300 mb-2">SWP Start Age</label>
             <input 
               type="number" 
-              value={swpStartAge} 
-              onChange={e => setSwpStartAge(e.target.value)}
-              className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-orange-300 dark:border-orange-600 rounded-md text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-orange-500 focus:border-orange-500" 
+              value={retirementAge} 
+              disabled
+              className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-orange-300 dark:border-orange-600 rounded-md text-slate-500 dark:text-slate-400 focus:outline-none" 
             />
           </div>
           <div>
@@ -593,7 +667,12 @@ export default function RetirementPlanningCalculator() {
       {/* One-time Withdrawals */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h4 className="text-lg font-medium text-slate-800 dark:text-slate-200">One-time Withdrawals</h4>
+          <div>
+            <h4 className="text-lg font-medium text-slate-800 dark:text-slate-200">One-time Withdrawals</h4>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+              Large expenses that can be made at any time (before or after retirement)
+            </p>
+          </div>
           <button 
             onClick={addOneTimeWithdrawal}
             className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-md shadow-sm transition-colors text-sm"
@@ -662,7 +741,13 @@ export default function RetirementPlanningCalculator() {
       {/* Retirement Goals */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h4 className="text-lg font-medium text-slate-800 dark:text-slate-200">Retirement Financial Goals</h4>
+          <div>
+            <h4 className="text-lg font-medium text-slate-800 dark:text-slate-200">Retirement Financial Goals (SWP)</h4>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+              Monthly withdrawals that can only start at or after retirement age ({retirementAge}). 
+              For pre-retirement expenses, use "One-time Withdrawals" above.
+            </p>
+          </div>
           <button 
             onClick={addRetirementGoal}
             className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-md shadow-sm transition-colors text-sm"
@@ -713,11 +798,20 @@ export default function RetirementPlanningCalculator() {
                 <input 
                   type="number" 
                   value={goal.startAge}
-                  onChange={e => setRetirementGoals(retirementGoals.map(g => 
-                    g.id === goal.id ? { ...g, startAge: e.target.value } : g
-                  ))}
+                  min={retirementAge}
+                  onChange={e => {
+                    const newStartAge = e.target.value;
+                    if (parseInt(newStartAge) >= parseInt(retirementAge)) {
+                      setRetirementGoals(retirementGoals.map(g => 
+                        g.id === goal.id ? { ...g, startAge: newStartAge } : g
+                      ));
+                    }
+                  }}
                   className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
                 />
+                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Must be ≥ retirement age ({retirementAge})
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Duration</label>
@@ -757,10 +851,10 @@ export default function RetirementPlanningCalculator() {
           {/* Enhanced Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 p-6 rounded-xl border border-blue-200 dark:border-blue-700">
-              <div className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-2">Post-Tax Retirement Corpus</div>
+              <div className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-2">Retirement Corpus</div>
               <div className="text-2xl font-bold text-blue-800 dark:text-blue-200">{fmt(result.totalCorpusAtRetirement)}</div>
               <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                Pre-tax: {fmt(result.totalCorpusBeforeTax)}
+                At age {retirementAge}
               </div>
             </div>
             
@@ -785,15 +879,70 @@ export default function RetirementPlanningCalculator() {
               <div className={`text-2xl font-bold ${
                 result.isFIREAchievable ? 'text-green-800 dark:text-green-200' : 'text-orange-800 dark:text-orange-200'
               }`}>
-                {result.fireAge} years
+                {result.fireAge >= 100 ? 'Not Achievable' : `${result.fireAge} years`}
               </div>
               <div className={`text-xs mt-1 ${
                 result.isFIREAchievable ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'
               }`}>
-                {result.isFIREAchievable ? 'Achievable!' : 'Need more time/investment'}
+                {result.isFIREAchievable ? 'Sustainable!' : 
+                  result.corpusDepletionAge ? `Corpus depletes at ${result.corpusDepletionAge}` : 'Insufficient corpus'}
               </div>
             </div>
           </div>
+
+          {/* Sustainability Analysis */}
+          {result.sustainabilityAnalysis && (
+            <div className={`p-6 rounded-lg border ${
+              result.isFIREAchievable 
+                ? 'bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800'
+                : 'bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 border-red-200 dark:border-red-800'
+            }`}>
+              <h4 className={`text-lg font-semibold mb-4 flex items-center ${
+                result.isFIREAchievable ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
+              }`}>
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Corpus Sustainability Analysis
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <div className={`text-sm font-medium mb-2 ${
+                    result.isFIREAchievable ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
+                  }`}>
+                    Sustainability to Age 80+
+                  </div>
+                  <div className={`text-lg font-bold ${
+                    result.sustainabilityAnalysis.isSustainableToAge80 ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
+                  }`}>
+                    {result.sustainabilityAnalysis.isSustainableToAge80 ? '✓ Sustainable' : '✗ Not Sustainable'}
+                  </div>
+                  <div className={`text-xs mt-1 ${
+                    result.isFIREAchievable ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                  }`}>
+                    Until age {result.sustainabilityAnalysis.minSustainabilityAge}
+                  </div>
+                </div>
+                <div>
+                  <div className={`text-sm font-medium mb-2 ${
+                    result.isFIREAchievable ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
+                  }`}>
+                    Lifetime Goals Coverage
+                  </div>
+                  <div className={`text-lg font-bold ${
+                    result.sustainabilityAnalysis.isSustainableForLifetime ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
+                  }`}>
+                    {result.sustainabilityAnalysis.isSustainableForLifetime ? '✓ Covered' : '✗ Insufficient'}
+                  </div>
+                  <div className={`text-xs mt-1 ${
+                    result.isFIREAchievable ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                  }`}>
+                    {result.corpusDepletionAge ? `Depletion at age ${result.corpusDepletionAge}` : 'No depletion projected'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Income vs Needs Comparison */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -813,7 +962,7 @@ export default function RetirementPlanningCalculator() {
                   ? 'text-green-600 dark:text-green-400' 
                   : 'text-red-600 dark:text-red-400'
               }`}>
-                {result.monthlyPassiveIncome >= result.totalMonthlyNeeds ? 'Fully Covered' : 'Shortfall Exists'}
+                Initial Coverage: {result.monthlyPassiveIncome >= result.totalMonthlyNeeds ? 'Sufficient' : 'Insufficient'}
               </div>
             </div>
           </div>
@@ -832,33 +981,56 @@ export default function RetirementPlanningCalculator() {
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-indigo-800 dark:text-indigo-200">
-                  {((result.totalCorpusBeforeTax - result.totalInvestment) / result.totalInvestment * 100).toFixed(1)}%
+                  {result.totalInvestment > 0 ? ((result.totalCorpusBeforeTax - result.totalInvestment) / result.totalInvestment * 100).toFixed(1) : 0}%
                 </div>
                 <div className="text-sm text-indigo-600 dark:text-indigo-400">Total Return %</div>
               </div>
             </div>
           </div>
 
-          {/* Goal Analysis */}
+          {/* Enhanced Goal Analysis */}
           <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700">
-            <h4 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Goal Affordability Analysis</h4>
-            <div className="space-y-3">
+            <h4 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Detailed Goal Sustainability Analysis</h4>
+            <div className="space-y-4">
               {result.goalAnalysis.map((goal) => (
-                <div key={goal.goalId} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg hover:shadow-sm transition-shadow">
-                  <div className="flex items-center">
-                    <div className={`w-4 h-4 rounded-full mr-3 ${
-                      goal.isAffordable ? 'bg-green-500' : 'bg-red-500'
-                    }`}></div>
-                    <span className="font-medium text-slate-700 dark:text-slate-300">{goal.description}</span>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <span className="text-slate-600 dark:text-slate-400">{fmt(goal.monthlyAmount)}</span>
-                    <span className={`text-sm font-medium px-3 py-1 rounded-full ${
+                <div key={goal.goalId} className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg hover:shadow-sm transition-shadow">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center mb-2">
+                        <div className={`w-4 h-4 rounded-full mr-3 ${
+                          goal.isAffordable ? 'bg-green-500' : 'bg-red-500'
+                        }`}></div>
+                        <span className="font-medium text-slate-700 dark:text-slate-300">{goal.description}</span>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <span className="text-slate-500 dark:text-slate-400">Monthly Amount:</span>
+                          <div className="font-medium text-slate-700 dark:text-slate-300">{fmt(goal.monthlyAmount)}</div>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 dark:text-slate-400">Start Age:</span>
+                          <div className="font-medium text-slate-700 dark:text-slate-300">{goal.startAge}</div>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 dark:text-slate-400">End Age:</span>
+                          <div className="font-medium text-slate-700 dark:text-slate-300">{goal.endAge}</div>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 dark:text-slate-400">Status:</span>
+                          <div className={`font-medium ${
+                            goal.isAffordable ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'
+                          }`}>
+                            {goal.sustainabilityStatus}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <span className={`text-sm font-medium px-3 py-1 rounded-full ml-4 ${
                       goal.isAffordable 
                         ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
                         : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                     }`}>
-                      {goal.isAffordable ? '✓ Affordable' : '✗ Shortfall'}
+                      {goal.isAffordable ? '✓ Sustainable' : '✗ Insufficient'}
                     </span>
                   </div>
                 </div>
@@ -920,10 +1092,10 @@ export default function RetirementPlanningCalculator() {
                 </tbody>
               </table>
             </div>
-            {result.corpusBreakdown.length > 20 && (
+            {result.corpusBreakdown.length > 50 && (
               <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  <strong>Showing first 20 years.</strong> Full {result.corpusBreakdown.length}-year projection available.
+                  <strong>Showing first 50 years.</strong> Full {result.corpusBreakdown.length}-year projection available.
                   Corpus sustains for {result.corpusBreakdown.filter(y => y.remainingCorpus > 0).length} years.
                 </p>
               </div>
