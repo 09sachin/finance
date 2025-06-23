@@ -9,8 +9,9 @@ import SWPCalculator from './components/SWPCalculator';
 import LumpsumSipSwpCalculator from './components/LumpsumSipSwpCalculator';
 import XIRRCalculator from './components/XIRRCalculator';
 import RetirementPlanningCalculator from './components/RetirementPlanningCalculator';
+import TargetSIPCalculator from './components/TargetSIPCalculator';
 
-type CalculatorType = 'sip' | 'lumpsum' | 'lumpsum_sip' | 'swp' | 'lumpsum_sip_swp' | 'xirr' | 'retirement_planning';
+type CalculatorType = 'sip' | 'lumpsum' | 'lumpsum_sip' | 'swp' | 'lumpsum_sip_swp' | 'xirr' | 'retirement_planning' | 'target_sip';
 
 const calculators: { id: CalculatorType; name: string; description: string }[] = [
   { id: 'sip', name: 'SIP Return', description: 'Calculate the future value of your Systematic Investment Plan.' },
@@ -20,6 +21,7 @@ const calculators: { id: CalculatorType; name: string; description: string }[] =
   { id: 'lumpsum_sip_swp', name: 'Lumpsum + SIP & SWP', description: 'Complex scenario planning with initial investments and subsequent withdrawals.' },
   { id: 'xirr', name: 'XIRR Calculator', description: 'Calculate the internal rate of return for a series of cash flows.' },
   { id: 'retirement_planning', name: 'Retirement Planning', description: 'Comprehensive retirement planning with FIRE age calculation and goal tracking.' },
+  { id: 'target_sip', name: 'Target SIP', description: 'Calculate time or SIP amount needed to reach your financial target.' },
 ];
 
 export default function FinancialCalculatorPage() {
@@ -41,6 +43,8 @@ export default function FinancialCalculatorPage() {
         return <XIRRCalculator />;
       case 'retirement_planning':
         return <RetirementPlanningCalculator />;
+      case 'target_sip':
+        return <TargetSIPCalculator />;
       default:
         return null;
     }
