@@ -16,8 +16,8 @@ const nextConfig = {
   // For GitHub Pages deployment
   output: 'export',
   // Update basePath if your repo name is not 'finance'
-  basePath: '/finance',
-  assetPrefix: '/finance/',
+  basePath: '/',
+  assetPrefix: '/',
   trailingSlash: true,
   images: {
     unoptimized: true,
