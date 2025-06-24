@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 
 const Navigation: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -22,7 +23,7 @@ const Navigation: React.FC = () => {
     <nav className="mb-6">
       <div className="flex justify-between items-center">
         <Link href="/" className="text-xl font-bold text-blue-600 dark:text-blue-400">
-          Mutual Fund Analysis
+          <Image src="/logo-removebg.png" alt="BitAndBots" width={100} height={100} />
         </Link>
         
         {/* Mobile menu button */}
