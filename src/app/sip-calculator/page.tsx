@@ -851,7 +851,7 @@ const SIPCalculatorContent: React.FC = () => {
           {/* Left column: Input parameters */}
           <div className="md:col-span-2">
             {/* Fund Selection */}
-            <div className="app-card p-4 mb-6">
+            <div className="app-card p-4 mb-6" style={{ position: 'relative', zIndex: 1 }}>
               <h2 className="text-lg font-medium text-slate-700 dark:text-slate-200 mb-4">Select Mutual Fund (Optional)</h2>
               
               <div className="mb-4">
@@ -880,7 +880,7 @@ const SIPCalculatorContent: React.FC = () => {
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.3 }}
-                      className="overflow-hidden"
+                      className="overflow-visible"
                     >
                       {!selectedFund ? (
                         <FundSearch onSelectFund={handleFundSelect} />
@@ -1292,7 +1292,7 @@ const SIPCalculatorContent: React.FC = () => {
                               animate={{ height: 'auto', opacity: 1 }}
                               exit={{ height: 0, opacity: 0 }}
                               transition={{ duration: 0.3 }}
-                              className="overflow-hidden"
+                              className="overflow-visible"
                             >
                               <div className={`mt-3 overflow-x-auto`}>
                                 <table className="min-w-full">

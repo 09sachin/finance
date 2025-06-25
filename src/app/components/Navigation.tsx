@@ -14,8 +14,9 @@ const Navigation: React.FC = () => {
   const navItems = [
     { name: 'Dashboard', path: '/' },
     { name: 'SIP Calculator', path: '/sip-calculator' },
+    { name: 'FundCompare', path: '/compare' },
     { name: 'SIP Compare', path: '/sip-compare' },
-    { name: 'Financial Calculator', path: '/financial-calculator' },
+    { name: 'Financial Calculators', path: '/financial-calculator' },
     { name: 'Favorites', path: '/favorites' },
   ];
   

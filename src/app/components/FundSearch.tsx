@@ -25,6 +25,7 @@ const FundSearch: React.FC<FundSearchProps> = ({ onSelectFund, showFavoriteOptio
 
   // Search funds
   const searchFunds = async (query: string) => {
+    console.log('Searching for:', query); // Debug log
     setIsLoading(true);
     setError(null);
     
@@ -33,17 +34,21 @@ const FundSearch: React.FC<FundSearchProps> = ({ onSelectFund, showFavoriteOptio
         `https://api.mfapi.in/mf/search?q=${encodeURIComponent(query)}`
       );
       
+      console.log('API Response:', response.data); // Debug log
+      
       if (response.data && Array.isArray(response.data)) {
         // API returns an array directly, so we need to adapt our code
         const sortedResults = [...response.data].sort((a, b) => 
           a.schemeName.localeCompare(b.schemeName)
         );
+        console.log('Setting search results:', sortedResults); // Debug log
         setSearchResults(sortedResults);
         
         if (sortedResults.length === 0) {
           setError('No funds found. Try a different search term.');
         }
       } else {
+        console.log('Invalid response format'); // Debug log
         setSearchResults([]);
         setError('No funds found. Try a different search term.');
       }
@@ -74,11 +79,13 @@ const FundSearch: React.FC<FundSearchProps> = ({ onSelectFund, showFavoriteOptio
       }, 500); // Debounce search to avoid too many requests
     } else {
       setSearchResults([]);
+      setError(null);
     }
   };
 
   // Handle selection
   const handleSelectFund = (schemeCode: number, schemeName: string) => {
+    console.log('Selected fund:', schemeCode, schemeName); // Debug log
     onSelectFund(schemeCode, schemeName);
     setSearchTerm('');
     setSearchResults([]);
@@ -131,13 +138,18 @@ const FundSearch: React.FC<FundSearchProps> = ({ onSelectFund, showFavoriteOptio
     }
   };
 
+  // Debug log whenever searchResults changes
+  useEffect(() => {
+    console.log('Search results updated:', searchResults);
+  }, [searchResults]);
+
   return (
     <div className="relative">
       <div className="flex items-center relative rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden">
         <input
           type="text"
           placeholder="Search for mutual funds..."
-          className="w-full px-4 py-2 focus:outline-none bg-white dark:bg-slate-800"
+          className="w-full px-4 py-2 focus:outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
           value={searchTerm}
           onChange={handleSearchInput}
           onKeyDown={handleKeyDown}
@@ -164,9 +176,23 @@ const FundSearch: React.FC<FundSearchProps> = ({ onSelectFund, showFavoriteOptio
         </div>
       )}
       
+      {/* Debug information */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="text-xs text-slate-500 mt-1">
+          Search term: "{searchTerm}" | Results: {searchResults.length} | Loading: {isLoading.toString()}
+        </div>
+      )}
+      
       {/* Results dropdown */}
       {searchResults.length > 0 && (
-        <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        <div 
+          className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+          style={{ 
+            position: 'absolute', 
+            zIndex: 9999,
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+          }}
+        >
           {searchResults.map((fund, index) => (
             <div
               key={fund.schemeCode}
@@ -178,8 +204,8 @@ const FundSearch: React.FC<FundSearchProps> = ({ onSelectFund, showFavoriteOptio
               onClick={() => handleSelectFund(fund.schemeCode, fund.schemeName)}
             >
               <div className="flex-grow pr-2">
-                <div className="text-sm font-medium">{fund.schemeName}</div>
-                <div className="text-xs text-slate-500">Code: {fund.schemeCode}</div>
+                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{fund.schemeName}</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">Code: {fund.schemeCode}</div>
               </div>
               {showFavoriteOption && (
                 <button

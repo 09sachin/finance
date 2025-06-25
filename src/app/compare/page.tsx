@@ -85,7 +85,7 @@ export default function ComparePage() {
         
         <div className="grid grid-cols-1 gap-4 sm:gap-6">
           {/* Search area */}
-          <div className="app-card">
+          <div className="app-card relative z-10" style={{ position: 'relative', zIndex: 10 }}>
             <div 
               className="p-4 flex items-center justify-between cursor-pointer"
               onClick={() => setSearchOpen(!searchOpen)}
@@ -116,7 +116,7 @@ export default function ComparePage() {
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="overflow-hidden"
+                  className="overflow-visible"
                 >
                   <div className="px-4 pb-4">
                     <FundSearch onSelectFund={handleFundSelect} />
