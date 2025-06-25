@@ -24,7 +24,7 @@ const Navigation: React.FC = () => {
     <nav className="mb-6">
       <div className="flex justify-between items-center">
         <Link href="/" className="text-xl font-bold text-blue-600 dark:text-blue-400">
-          <Image src="/logo-removebg.png" alt="BitAndBots" width={100} height={100} />
+          <Image src="/logo-removebg.png" alt="BitsAndBots" width={100} height={100} />
         </Link>
         
         {/* Mobile menu button */}

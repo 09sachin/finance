@@ -8,7 +8,7 @@
 
   <!-- Homepage - Mutual Fund Dashboard -->
   <url>
-    <loc>https://finance.bitandbots.in/</loc>
+    <loc>https://finance.bitsandbots.in/</loc>
     <lastmod>2024-12-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
@@ -16,7 +16,7 @@
 
   <!-- SIP Calculator -->
   <url>
-    <loc>https://finance.bitandbots.in/sip-calculator</loc>
+    <loc>https://finance.bitsandbots.in/sip-calculator</loc>
     <lastmod>2024-12-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
@@ -24,7 +24,7 @@
 
   <!-- SIP Compare -->
   <url>
-    <loc>https://finance.bitandbots.in/sip-compare</loc>
+    <loc>https://finance.bitsandbots.in/sip-compare</loc>
     <lastmod>2024-12-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
@@ -32,7 +32,7 @@
 
   <!-- Financial Calculator Hub -->
   <url>
-    <loc>https://finance.bitandbots.in/financial-calculator</loc>
+    <loc>https://finance.bitsandbots.in/financial-calculator</loc>
     <lastmod>2024-12-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -40,7 +40,7 @@
 
   <!-- Fund Comparison Tool -->
   <url>
-    <loc>https://finance.bitandbots.in/compare</loc>
+    <loc>https://finance.bitsandbots.in/compare</loc>
     <lastmod>2024-12-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -48,7 +48,7 @@
 
   <!-- Nifty Index Tracker -->
   <url>
-    <loc>https://finance.bitandbots.in/nifty-tracker</loc>
+    <loc>https://finance.bitsandbots.in/nifty-tracker</loc>
     <lastmod>2024-12-19</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
@@ -56,7 +56,7 @@
 
   <!-- Favorites Page -->
   <url>
-    <loc>https://finance.bitandbots.in/favorites</loc>
+    <loc>https://finance.bitsandbots.in/favorites</loc>
     <lastmod>2024-12-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>

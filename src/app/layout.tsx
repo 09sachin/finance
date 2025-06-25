@@ -20,8 +20,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Mutual Fund Tracker & Financial Calculator | BitAndBots by Sachin Khoja - Complete Investment Analysis Platform",
-  description: "Comprehensive mutual fund tracker and financial calculator platform by Sachin Khoja at BitAndBots. Track SIP returns, analyze historical performance, XIRR calculator, target SIP calculator, portfolio tracking, and complete investment planning tools for custom duration analysis.",
+  title: "Mutual Fund Tracker & Financial Calculator | BitsAndBots by Sachin Khoja - Complete Investment Analysis Platform",
+  description: "Comprehensive mutual fund tracker and financial calculator platform by Sachin Khoja at BitsAndBots. Track SIP returns, analyze historical performance, XIRR calculator, target SIP calculator, portfolio tracking, and complete investment planning tools for custom duration analysis.",
   keywords: [
     "mutual fund calculator",
     "SIP calculator", 
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     "systematic investment plan",
     "lumpsum investment calculator",
     "compound annual growth rate",
-    "BitAndBots",
+    "BitsAndBots",
     "Sachin Khoja",
     "customizable investment platform",
     "portfolio tracking tools",
@@ -59,10 +59,10 @@ export const metadata: Metadata = {
     "investment analytics"
   ].join(", "),
   authors: [
-    { name: "Sachin Khoja", url: "https://bitandbots.in" }
+    { name: "Sachin Khoja", url: "https://bitsandbots.in" }
   ],
   creator: "Sachin Khoja",
-  publisher: "BitAndBots",
+  publisher: "BitsAndBots",
   robots: {
     index: true,
     follow: true,
@@ -77,10 +77,10 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://finance.bitandbots.in',
-    siteName: 'BitAndBots Financial Tools',
+    url: 'https://finance.bitsandbots.in',
+    siteName: 'BitsAndBots Financial Tools',
     title: 'Mutual Fund Tracker & SIP Calculator | Complete Investment Analysis Platform',
-    description: 'Track mutual fund performance, calculate SIP returns, analyze portfolio with XIRR calculator, target SIP planner, and comprehensive financial tools by Sachin Khoja at BitAndBots.',
+    description: 'Track mutual fund performance, calculate SIP returns, analyze portfolio with XIRR calculator, target SIP planner, and comprehensive financial tools by Sachin Khoja at BitsAndBots.',
     images: [
       {
         url: '/favicon/og-image.jpg',
@@ -92,9 +92,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    site: '@bitandbots',
+    site: '@bitsandbots',
     creator: '@sachinkhoja',
-    title: 'Mutual Fund Tracker & SIP Calculator | BitAndBots Financial Tools',
+    title: 'Mutual Fund Tracker & SIP Calculator | BitsAndBots Financial Tools',
     description: 'Comprehensive platform for tracking mutual fund performance, SIP returns calculation, portfolio analysis, and investment planning tools.',
     images: ['/favicon/twitter-card.jpg'],
   },
@@ -104,16 +104,16 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Mutual Fund Tracker - BitAndBots"
+    title: "Mutual Fund Tracker - BitsAndBots"
   },
   formatDetection: {
     telephone: false,
   },
   alternates: {
-    canonical: 'https://finance.bitandbots.in',
+    canonical: 'https://finance.bitsandbots.in',
   },
   other: {
-    'application-name': 'BitAndBots Financial Tools',
+    'application-name': 'BitsAndBots Financial Tools',
     'msapplication-TileColor': '#3b82f6',
     'msapplication-config': '/browserconfig.xml',
     'google-site-verification': 'your-google-verification-code',
@@ -131,7 +131,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/favicon/apple-touch-icon.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <link rel="icon" href="/favicon/favicon.ico" />
-        <link rel="canonical" href="https://finance.bitandbots.in" />
+        <link rel="canonical" href="https://finance.bitsandbots.in" />
         
         {/* Additional SEO meta tags */}
         <meta name="geo.region" content="IN" />
@@ -149,19 +149,19 @@ export default function RootLayout({
               "@context": "https://schema.org",
               "@type": "WebApplication",
               "name": "Mutual Fund Tracker & Financial Calculator",
-              "url": "https://finance.bitandbots.in",
+              "url": "https://finance.bitsandbots.in",
               "description": "Comprehensive mutual fund tracking and financial calculator platform for SIP returns, portfolio analysis, and investment planning",
               "applicationCategory": "FinanceApplication",
               "operatingSystem": "Web Browser",
               "author": {
                 "@type": "Person",
                 "name": "Sachin Khoja",
-                "url": "https://bitandbots.in"
+                "url": "https://bitsandbots.in"
               },
               "publisher": {
                 "@type": "Organization",
-                "name": "BitAndBots",
-                "url": "https://bitandbots.in"
+                "name": "BitsAndBots",
+                "url": "https://bitsandbots.in"
               },
               "offers": {
                 "@type": "Offer",
