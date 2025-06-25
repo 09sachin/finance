@@ -1,5 +1,5 @@
-# Robots.txt for BitAndBots Financial Tools Platform
-# https://finance.bitandbots.in
+# Robots.txt for BitsAndBots Financial Tools Platform
+# https://finance.bitsandbots.in
 
 User-agent: *
 Allow: /
@@ -38,7 +38,7 @@ Allow: /*.svg
 Allow: /favicon.ico
 
 # Sitemap location
-Sitemap: https://finance.bitandbots.in/sitemap.xml
+Sitemap: https://finance.bitsandbots.in/sitemap.xml
 
 # Crawl delay (optional - helps prevent server overload)
 Crawl-delay: 1
