@@ -303,17 +303,54 @@ const SIPCalculatorContent: React.FC = () => {
       targetDate.getDate()
     ).getTime();
     
-    // Sort by how close each date is to the target
-    const sorted = [...data].sort((a, b) => {
-      const dateA = safeParseDate(a.date).getTime();
-      const dateB = safeParseDate(b.date).getTime();
-      return Math.abs(dateA - targetTime) - Math.abs(dateB - targetTime);
+    // First, try to find exact match
+    const exactMatch = data.find(item => {
+      const itemTime = new Date(
+        safeParseDate(item.date).getFullYear(),
+        safeParseDate(item.date).getMonth(),
+        safeParseDate(item.date).getDate()
+      ).getTime();
+      return itemTime === targetTime;
     });
     
-    // Return the closest match
+    if (exactMatch) {
+      return { nav: exactMatch.nav, date: exactMatch.date };
+    }
+    
+    // If exact match not found, find the next available date (after target date)
+    const futureDate = data.find(item => {
+      const itemTime = new Date(
+        safeParseDate(item.date).getFullYear(),
+        safeParseDate(item.date).getMonth(),
+        safeParseDate(item.date).getDate()
+      ).getTime();
+      return itemTime > targetTime;
+    });
+    
+    if (futureDate) {
+      return { nav: futureDate.nav, date: futureDate.date };
+    }
+    
+    // If no future date available, find the closest previous date
+    const pastDates = data.filter(item => {
+      const itemTime = new Date(
+        safeParseDate(item.date).getFullYear(),
+        safeParseDate(item.date).getMonth(),
+        safeParseDate(item.date).getDate()
+      ).getTime();
+      return itemTime < targetTime;
+    });
+    
+    if (pastDates.length > 0) {
+      // Return the most recent past date
+      const mostRecentPast = pastDates[pastDates.length - 1];
+      return { nav: mostRecentPast.nav, date: mostRecentPast.date };
+    }
+    
+    // Fallback to first available date if no other option
     return { 
-      nav: sorted[0].nav,
-      date: sorted[0].date 
+      nav: data[0].nav,
+      date: data[0].date 
     };
   };
 
