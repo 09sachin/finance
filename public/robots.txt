@@ -1,0 +1,67 @@
+# Robots.txt for BitAndBots Financial Tools Platform
+# https://finance.bitandbots.in
+
+User-agent: *
+Allow: /
+
+# Allow all search engines to crawl actual existing pages
+Allow: /
+Allow: /sip-calculator
+Allow: /sip-compare
+Allow: /financial-calculator
+Allow: /compare
+Allow: /favorites
+Allow: /nifty-tracker
+
+# Block access to sensitive files and directories
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/
+Disallow: /private/
+Disallow: /*.json$
+Disallow: /temp/
+Disallow: /logs/
+Disallow: /components/
+Disallow: /hooks/
+
+# Allow access to static assets
+Allow: /favicon/
+Allow: /icons/
+Allow: /images/
+Allow: /css/
+Allow: /js/
+Allow: /*.png
+Allow: /*.jpg
+Allow: /*.jpeg
+Allow: /*.gif
+Allow: /*.svg
+Allow: /favicon.ico
+
+# Sitemap location
+Sitemap: https://finance.bitandbots.in/sitemap.xml
+
+# Crawl delay (optional - helps prevent server overload)
+Crawl-delay: 1
+
+# Specific rules for major search engines
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Slurp
+Allow: /
+Crawl-delay: 1
+
+# Block bad bots
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: / 

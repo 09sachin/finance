@@ -59,7 +59,7 @@ export const metadata: Metadata = {
     "investment analytics"
   ].join(", "),
   authors: [
-    { name: "Sachin Khoja", url: "https://bitandbots.com" }
+    { name: "Sachin Khoja", url: "https://bitandbots.in" }
   ],
   creator: "Sachin Khoja",
   publisher: "BitAndBots",
@@ -77,13 +77,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://bitandbots.com/finance',
+    url: 'https://finance.bitandbots.in',
     siteName: 'BitAndBots Financial Tools',
     title: 'Mutual Fund Tracker & SIP Calculator | Complete Investment Analysis Platform',
     description: 'Track mutual fund performance, calculate SIP returns, analyze portfolio with XIRR calculator, target SIP planner, and comprehensive financial tools by Sachin Khoja at BitAndBots.',
     images: [
       {
-        url: '/finance/og-image.jpg',
+        url: '/favicon/og-image.jpg',
         width: 1200,
         height: 630,
         alt: 'Mutual Fund Tracker and Financial Calculator Platform',
@@ -96,11 +96,11 @@ export const metadata: Metadata = {
     creator: '@sachinkhoja',
     title: 'Mutual Fund Tracker & SIP Calculator | BitAndBots Financial Tools',
     description: 'Comprehensive platform for tracking mutual fund performance, SIP returns calculation, portfolio analysis, and investment planning tools.',
-    images: ['/finance/twitter-card.jpg'],
+    images: ['/favicon/twitter-card.jpg'],
   },
   category: 'finance',
   classification: 'Investment Tools, Financial Calculators, Portfolio Management',
-  manifest: "/finance/manifest.json",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -110,12 +110,12 @@ export const metadata: Metadata = {
     telephone: false,
   },
   alternates: {
-    canonical: 'https://bitandbots.com/finance',
+    canonical: 'https://finance.bitandbots.in',
   },
   other: {
     'application-name': 'BitAndBots Financial Tools',
     'msapplication-TileColor': '#3b82f6',
-    'msapplication-config': '/finance/browserconfig.xml',
+    'msapplication-config': '/browserconfig.xml',
     'google-site-verification': 'your-google-verification-code',
   },
 };
@@ -131,7 +131,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/favicon/apple-touch-icon.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <link rel="icon" href="/favicon/favicon.ico" />
-        <link rel="canonical" href="https://finance.bitandbots.com" />
+        <link rel="canonical" href="https://finance.bitandbots.in" />
         
         {/* Additional SEO meta tags */}
         <meta name="geo.region" content="IN" />
@@ -149,19 +149,19 @@ export default function RootLayout({
               "@context": "https://schema.org",
               "@type": "WebApplication",
               "name": "Mutual Fund Tracker & Financial Calculator",
-              "url": "https://finance.bitandbots.com",
+              "url": "https://finance.bitandbots.in",
               "description": "Comprehensive mutual fund tracking and financial calculator platform for SIP returns, portfolio analysis, and investment planning",
               "applicationCategory": "FinanceApplication",
               "operatingSystem": "Web Browser",
               "author": {
                 "@type": "Person",
                 "name": "Sachin Khoja",
-                "url": "https://bitandbots.com"
+                "url": "https://bitandbots.in"
               },
               "publisher": {
                 "@type": "Organization",
                 "name": "BitAndBots",
-                "url": "https://bitandbots.com"
+                "url": "https://bitandbots.in"
               },
               "offers": {
                 "@type": "Offer",
