@@ -200,6 +200,8 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <link rel="icon" href="/favicon/favicon.ico" />
         <link rel="canonical" href="https://finance.bitsandbots.in" />
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7857255548980209"
+     crossOrigin="anonymous"></script>
         
         {/* Additional SEO meta tags */}
         <meta name="geo.region" content="IN" />
