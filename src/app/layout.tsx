@@ -23,6 +23,37 @@ export const metadata: Metadata = {
   title: "Mutual Fund Tracker & Financial Calculator | BitsAndBots by Sachin Khoja - Complete Investment Analysis Platform",
   description: "Comprehensive mutual fund tracker and financial calculator platform by Sachin Khoja at BitsAndBots. Track SIP returns, analyze historical performance, XIRR calculator, target SIP calculator, portfolio tracking, and complete investment planning tools for custom duration analysis.",
   keywords: [
+    "Mutual Fund Tracker",
+    "Sip calculator",
+    "SIP calculator by bits and bots",
+    "SIP calculator by bitsandbots",
+    "Time to reach target with SIP",
+    "Time to reach target with SIP calculator",
+    "Time to reach target with SIP calculator by bits and bots",
+    "Time to reach target with SIP calculator by bitsandbots",
+    "Time to reach target with SIP calculator by bitsandbots",
+    "SIP needed to reach target in given time",
+    "SIP needed to reach target in given time calculator",
+    "SIP needed to reach target in given time calculator by bits and bots",
+    "SIP needed to reach target in given time calculator by bitsandbots",
+    "SIP needed to reach target in given time calculator by bitsandbots",
+    "Highly customizable investment platform",
+    "Customizable investment platform",
+    "Customizable investment platform by bits and bots",
+    "Customizable investment platform by bitsandbots",
+    "Customizable investment platform by bitsandbots",
+    "Customizable mutual fund returns",
+    "Customizable mutual fund returns calculator",
+    "Customizable mutual fund returns calculator by bits and bots",
+    "Customizable mutual fund returns calculator by bitsandbots",
+    "Customizable mutual fund returns calculator by bitsandbots",
+    "Compare past return of SIP",
+    "Benchmark return of SIP",
+    "Benchmark daily,weekly,monthly,yearly return of SIP",
+    "Benchmark daily,weekly,monthly,yearly return of SIP calculator",
+    "Benchmark daily,weekly,monthly,yearly return of SIP calculator by bits and bots",
+    "Benchmark daily,weekly,monthly,yearly return of SIP calculator by bitsandbots",
+    "Benchmark daily,weekly,monthly,yearly return of SIP calculator by bitsandbots",
     "BitsAndBots",
     "Finance by BitsAndBots",
     "Finance by Sachin Khoja",
@@ -177,6 +208,8 @@ export default function RootLayout({
         <meta name="revisit-after" content="7 days" />
         <meta name="distribution" content="global" />
         <meta name="rating" content="general" />
+        <meta name="google-adsense-account" content="ca-pub-7857255548980209" />
+        
         
         {/* Schema.org structured data */}
         <script
