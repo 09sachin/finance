@@ -20,7 +20,7 @@ export const CALCULATOR_REGISTRY: CalculatorMeta[] = [
   { id: 'ppf', name: 'PPF', description: 'Public Provident Fund with the ₹1.5 lakh yearly cap and 15-year tenure.', category: 'Loans & Deposits' },
   { id: 'epf', name: 'EPF Corpus', description: 'Employee Provident Fund corpus with the EPS wage ceiling applied to employer contributions.', category: 'Loans & Deposits' },
   { id: 'retirement', name: 'Retirement Planning', description: 'Simple plan: savings, SIP, expenses, inflation, and how long the corpus lasts.', category: 'Planning' },
-  { id: 'fire', name: 'FIRE', description: 'Find the earliest age your investments can cover inflated living costs, with SIPs, one-offs, and optional LTCG.', category: 'Planning' },
+  { id: 'fire', name: 'FIRE', description: 'Lean, Comfortable, and Fat FIRE ages, plus the extra SIP needed for a target FIRE age.', category: 'Planning' },
   { id: 'inflation', name: 'Inflation Adjuster', description: 'Nominal vs real (today’s rupees) future value, and the amount you need to keep purchasing power.', category: 'Planning' },
   { id: 'xirr', name: 'XIRR', description: 'Annualised return for irregular cash flows on actual dates.', category: 'Planning' },
 ];

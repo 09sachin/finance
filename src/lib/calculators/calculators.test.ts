@@ -11,7 +11,7 @@ import { calculateEpf, EPS_WAGE_CEILING, EPS_RATE } from './epf';
 import { projectedGrowthPercent } from './xirr';
 import { monthsToTarget, requiredSipAmount } from './targetSip';
 import { calculateRetirement } from './retirement';
-import { calculateFire } from './fire';
+import { calculateFire, requiredExtraSip } from './fire';
 
 describe('SIP', () => {
   it('matches the standard 10-year 12% annuity-due value', () => {
@@ -214,5 +214,71 @@ describe('FIRE', () => {
     });
     expect(result.fireAge).not.toBeNull();
     expect(result.fireAge).toBeLessThanOrEqual(42);
+  });
+
+  it('pushes Comfortable FIRE later than Lean when lifestyle spend is higher', () => {
+    const base = {
+      currentAge: 30,
+      investments: [{ name: 'Equity', amount: 2_000_000, annualPercent: 12 }],
+      sips: [{ name: 'SIP', monthlyAmount: 40_000, annualPercent: 12, stepUpPercent: 0 }],
+      monthlyExpenseToday: 80_000,
+      expenseInflationPercent: 6,
+      oneOffs: [],
+      postFireAnnualPercent: 8,
+      ltcgEnabled: false,
+      ltcgRatePercent: 12.5,
+      asOf: new Date(2026, 0, 1),
+      maxFireAge: 70,
+      sustainToAge: 90,
+    };
+    const lean = calculateFire({ ...base, lifestyleUpliftPercent: 0 });
+    const comfortable = calculateFire({ ...base, lifestyleUpliftPercent: 20 });
+    expect(lean.fireAge).not.toBeNull();
+    expect(comfortable.fireAge).not.toBeNull();
+    expect(comfortable.fireAge!).toBeGreaterThanOrEqual(lean.fireAge!);
+  });
+
+  it('returns zero extra SIP when the plan already hits the target age', () => {
+    const sip = requiredExtraSip(
+      {
+        currentAge: 40,
+        investments: [{ name: 'Equity', amount: 50_000_000, annualPercent: 10 }],
+        sips: [],
+        monthlyExpenseToday: 20_000,
+        expenseInflationPercent: 0,
+        oneOffs: [],
+        postFireAnnualPercent: 8,
+        ltcgEnabled: false,
+        ltcgRatePercent: 12.5,
+        asOf: new Date(2026, 0, 1),
+        maxFireAge: 50,
+        sustainToAge: 70,
+        lifestyleUpliftPercent: 0,
+      },
+      42
+    );
+    expect(sip.alreadyOnTrack).toBe(true);
+    expect(sip.extraMonthlySip).toBe(0);
+  });
+
+  it('reports remaining corpus at user checkpoint ages', () => {
+    const result = calculateFire({
+      currentAge: 40,
+      investments: [{ name: 'Equity', amount: 50_000_000, annualPercent: 10 }],
+      sips: [],
+      monthlyExpenseToday: 20_000,
+      expenseInflationPercent: 0,
+      oneOffs: [],
+      postFireAnnualPercent: 8,
+      ltcgEnabled: false,
+      ltcgRatePercent: 12.5,
+      asOf: new Date(2026, 0, 1),
+      maxFireAge: 50,
+      sustainToAge: 85,
+      checkpointAges: [50, 70],
+    });
+    expect(result.checkpointCorpus.map((p) => p.age)).toEqual([50, 70]);
+    expect(result.checkpointCorpus[0].corpus).toBeGreaterThan(0);
+    expect(result.checkpointCorpus[1].corpus).toBeGreaterThan(0);
   });
 });
