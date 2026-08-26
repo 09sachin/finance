@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Navigation from '../components/Navigation';
 import { 
   fetchNiftyHistoricalData, 
   convertNiftyDataToInternal, 
@@ -183,8 +182,6 @@ export default function NiftyTrackerPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-6 px-4 sm:py-8">
       <div className="container mx-auto">
-        <Navigation />
-        
         <header className="mb-6 text-center sm:text-left">
           <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Nifty Index Return Tracker</h1>
           <p className="text-slate-600 dark:text-slate-300 mt-1">

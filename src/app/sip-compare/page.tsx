@@ -4,7 +4,6 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, differenceInMonths, parseISO, isValid, addMonths } from 'date-fns';
 import { Line } from 'react-chartjs-2';
-import Navigation from '../components/Navigation';
 import FundSearch from '../components/FundSearch';
 import FavoritesFunds from '../components/FavoritesFunds';
 import axios from 'axios';
@@ -81,7 +80,6 @@ function SipCompareLoading() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-6 px-4 sm:py-8">
       <div className="container mx-auto">
-        <Navigation />
         <div className="flex justify-center items-center h-64">
           <div className="animate-pulse flex flex-col items-center">
             <div className="h-12 w-48 bg-slate-200 dark:bg-slate-700 rounded mb-4"></div>
@@ -690,8 +688,6 @@ function SipCompareContent() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-6 px-4 sm:py-8">
       <div className="container mx-auto">
-        <Navigation />
-        
         <header className="mb-6 text-center sm:text-left">
           <h1 className="text-2xl font-bold text-slate-800 dark:text-white">SIP Comparison</h1>
           <p className="text-slate-600 dark:text-slate-300 mt-1">

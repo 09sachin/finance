@@ -69,7 +69,7 @@ export default function SliderWithInput({
             min={min}
             max={max}
             step={step}
-            className="app-input w-full pl-7" 
+            className="app-input w-full pl-9" 
           />
         </div>
       </div>

@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "predeploy": "npm run build && cp public/404.html out/ && cp public/index-redirect.html out/404.html && echo 'finance.bitsandbots.in' > out/CNAME && touch out/.nojekyll",
     "deploy": "gh-pages -d out --dotfiles"
   },
@@ -34,6 +36,7 @@
     "gh-pages": "^6.3.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.11"
   }
 }
