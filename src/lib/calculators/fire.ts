@@ -34,6 +34,7 @@ export interface FireInput {
   maxFireAge?: number;
   sustainToAge?: number;
   preserveCorpusAtFire?: boolean;
+  extraSipStepUpPercent?: number;
   asOf?: Date;
   lifestyleUpliftPercent?: number;
   checkpointAges?: number[];
@@ -367,6 +368,7 @@ export interface ExtraSipResult {
   reachable: boolean;
   alreadyOnTrack: boolean;
   extraSipAnnualPercent: number;
+  extraSipStepUpPercent: number;
 }
 
 function extraSipRatePercent(input: FireInput): number {
@@ -383,6 +385,7 @@ export function requiredExtraSip(input: FireInput, fireAge: number): ExtraSipRes
   const extraRate = extraSipRatePercent(input);
   const sustainToAge = input.sustainToAge ?? 90;
   const maxFireAge = Math.max(input.maxFireAge ?? 70, targetAge);
+  const extraSipStepUpPercent = input.extraSipStepUpPercent ?? 0;
 
   const tryExtra = (extra: number) => {
     const sips =
@@ -393,7 +396,7 @@ export function requiredExtraSip(input: FireInput, fireAge: number): ExtraSipRes
               name: 'Extra SIP',
               monthlyAmount: extra,
               annualPercent: extraRate,
-              stepUpPercent: 0,
+              stepUpPercent: extraSipStepUpPercent,
             },
           ]
         : input.sips;
@@ -401,13 +404,25 @@ export function requiredExtraSip(input: FireInput, fireAge: number): ExtraSipRes
   };
 
   if (tryExtra(0)) {
-    return { extraMonthlySip: 0, reachable: true, alreadyOnTrack: true, extraSipAnnualPercent: extraRate };
+    return {
+      extraMonthlySip: 0,
+      reachable: true,
+      alreadyOnTrack: true,
+      extraSipAnnualPercent: extraRate,
+      extraSipStepUpPercent,
+    };
   }
 
   let hi = 50_000;
   while (hi < 5_000_000 && !tryExtra(hi)) hi *= 2;
   if (!tryExtra(hi)) {
-    return { extraMonthlySip: 0, reachable: false, alreadyOnTrack: false, extraSipAnnualPercent: extraRate };
+    return {
+      extraMonthlySip: 0,
+      reachable: false,
+      alreadyOnTrack: false,
+      extraSipAnnualPercent: extraRate,
+      extraSipStepUpPercent,
+    };
   }
 
   let lo = 0;
@@ -422,6 +437,7 @@ export function requiredExtraSip(input: FireInput, fireAge: number): ExtraSipRes
     reachable: true,
     alreadyOnTrack: false,
     extraSipAnnualPercent: extraRate,
+    extraSipStepUpPercent,
   };
 }
 
@@ -451,7 +467,7 @@ export function calculateFireSipPlan(
               name: 'Extra SIP',
               monthlyAmount: sip.extraMonthlySip,
               annualPercent: extraRate,
-              stepUpPercent: 0,
+              stepUpPercent: sip.extraSipStepUpPercent,
             },
           ]
         : input.sips;

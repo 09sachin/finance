@@ -70,6 +70,7 @@ export default function FireCalculator() {
   const [mode, setMode] = useState<'age' | 'sip'>('age');
   const [selected, setSelected] = useState<FireKind>('lean');
   const [targetAges, setTargetAges] = useState({ lean: '45', comfortable: '50', fat: '55' });
+  const [extraSipStepUp, setExtraSipStepUp] = useState('10');
   const [sustainToAge, setSustainToAge] = useState('90');
   const [preserveCorpusAtFire, setPreserveCorpusAtFire] = useState(false);
   const [checkpointAges, setCheckpointAges] = useState(['60', '80']);
@@ -88,6 +89,7 @@ export default function FireCalculator() {
   const post = parseNumber(postFireReturn);
   const taxRate = parseNumber(ltcgRate);
   const lifeAge = parseNumber(sustainToAge);
+  const extraStepUp = parseNumber(extraSipStepUp);
   const uplifts = {
     lean: parseUplift(leanUplift),
     comfortable: parseUplift(comfortableUplift),
@@ -101,6 +103,7 @@ export default function FireCalculator() {
   if (ltcgEnabled && (taxRate === null || taxRate < 0)) errors.push('LTCG tax rate cannot be negative');
   if (lifeAge === null || (age !== null && lifeAge <= age)) errors.push('Corpus must last until an age later than your current age');
   if (lifeAge !== null && lifeAge > 120) errors.push('Corpus must last until an age of 120 or less');
+  if (extraStepUp === null || extraStepUp < 0) errors.push('Extra SIP step-up cannot be negative');
   for (const kind of KINDS) {
     if (uplifts[kind] === null) errors.push(`${FIRE_COPY[kind].title} lifestyle % must be a number (0 and negatives are allowed)`);
   }
@@ -133,9 +136,10 @@ export default function FireCalculator() {
       asOf: new Date(),
       sustainToAge: lifeAge ?? 90,
       preserveCorpusAtFire,
+      extraSipStepUpPercent: extraStepUp ?? 0,
       checkpointAges: checkpointAges.map((a) => parseNumber(a)).filter((a): a is number => a !== null && a > 0),
     };
-  }, [age, expense, inf, post, investments, sips, oneOffs, ltcgEnabled, taxRate, lifeAge, preserveCorpusAtFire, checkpointAges]);
+  }, [age, expense, inf, post, investments, sips, oneOffs, ltcgEnabled, taxRate, lifeAge, preserveCorpusAtFire, extraStepUp, checkpointAges]);
 
   const numericUplifts =
     uplifts.lean !== null && uplifts.comfortable !== null && uplifts.fat !== null
@@ -145,7 +149,7 @@ export default function FireCalculator() {
   const ageResults = useAutoCalculate(() => {
     if (errors.length || !baseInput || !numericUplifts || mode !== 'age') return null;
     return calculateFireScenarios(baseInput, numericUplifts);
-  }, [errors.length, baseInput, numericUplifts, mode, currentAge, monthlyExpense, inflation, postFireReturn, ltcgEnabled, ltcgRate, investments, sips, oneOffs, leanUplift, comfortableUplift, fatUplift, checkpointAges, sustainToAge, preserveCorpusAtFire]);
+  }, [errors.length, baseInput, numericUplifts, mode, currentAge, monthlyExpense, inflation, postFireReturn, ltcgEnabled, ltcgRate, investments, sips, oneOffs, leanUplift, comfortableUplift, fatUplift, checkpointAges, sustainToAge, preserveCorpusAtFire, extraSipStepUp]);
 
   const sipResults = useAutoCalculate(() => {
     if (errors.length || !baseInput || !numericUplifts || mode !== 'sip') return null;
@@ -154,7 +158,7 @@ export default function FireCalculator() {
       comfortable: parseNumber(targetAges.comfortable) ?? 50,
       fat: parseNumber(targetAges.fat) ?? 55,
     });
-  }, [errors.length, baseInput, numericUplifts, mode, targetAges, currentAge, monthlyExpense, inflation, postFireReturn, ltcgEnabled, ltcgRate, investments, sips, oneOffs, leanUplift, comfortableUplift, fatUplift, checkpointAges, sustainToAge, preserveCorpusAtFire]);
+  }, [errors.length, baseInput, numericUplifts, mode, targetAges, currentAge, monthlyExpense, inflation, postFireReturn, ltcgEnabled, ltcgRate, investments, sips, oneOffs, leanUplift, comfortableUplift, fatUplift, checkpointAges, sustainToAge, preserveCorpusAtFire, extraSipStepUp]);
 
   const selectedAge = ageResults?.[selected];
 
@@ -176,6 +180,7 @@ export default function FireCalculator() {
             FIRE age is the earliest age whose corpus can pay that spend through age {lifeAge ?? 90}. SIPs stop at FIRE; after that the corpus
             grows at your post-FIRE return. If you turn on “keep FIRE corpus”, leftover at that age must also be at least the corpus you had
             when you retired. Use reverse SIP to pick an age and see the extra monthly SIP needed, on top of SIPs you already have.
+            That extra SIP can stay flat or step up each year.
           </p>
         </HowItWorks>
       )}
@@ -265,7 +270,9 @@ export default function FireCalculator() {
                           ? 'Even a very large extra SIP is not enough by this age'
                           : row.alreadyOnTrack
                             ? 'Current SIPs already get you there'
-                            : `Extra SIP on top of what you already invest, at ~${row.extraSipAnnualPercent.toFixed(1)}%`}
+                            : `Extra SIP on top of what you already invest, at ~${row.extraSipAnnualPercent.toFixed(1)}%${
+                                row.extraSipStepUpPercent > 0 ? `, stepping up ${row.extraSipStepUpPercent}% a year` : ''
+                              }`}
                       </p>
                       <p className="mt-3 text-xs text-slate-500">{formatUplift(uplift)}</p>
                       <p className="text-sm text-slate-700 dark:text-slate-200">
@@ -422,6 +429,17 @@ export default function FireCalculator() {
           SIP needed for a FIRE age
         </button>
       </div>
+      {mode === 'sip' && (
+        <div className="max-w-xs">
+          <NumberField
+            label="Extra SIP yearly step-up"
+            kind="percent"
+            value={extraSipStepUp}
+            onChange={setExtraSipStepUp}
+            hint="0 keeps the extra SIP flat. Existing SIPs keep their own step-up."
+          />
+        </div>
+      )}
 
       <ValidationBanner errors={errors} />
 
